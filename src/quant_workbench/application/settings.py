@@ -7,10 +7,11 @@ Everything has a sensible default, so the workbench runs with no configuration a
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -59,6 +60,14 @@ class Settings(BaseSettings):
     #: Optional trailer appended to commits created from the Git panel (empty = none).
     commit_trailer: str = ""
 
+    @field_validator(
+        "workspace_root", "expected_git_name", "expected_git_remote_host", mode="before"
+    )
+    @classmethod
+    def _empty_means_unset(cls, value: object) -> object:
+        """``""`` in the settings file stands for "no value" (TOML has no ``null``)."""
+        return None if value == "" else value
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -95,3 +104,31 @@ def load_settings(settings_file: Path | None = None) -> Settings:
         )
 
     return _FileBackedSettings()
+
+
+def _toml_value(value: Any) -> str:
+    """A TOML literal for the value types :class:`Settings` uses (JSON strings are valid TOML)."""
+    if value is None:
+        return '""'  # TOML has no null; the settings model reads "" back as None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, tuple | list):
+        return "[" + ", ".join(_toml_value(item) for item in value) + "]"
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def settings_to_toml(settings: Settings) -> str:
+    """``settings.toml`` text for ``settings`` (unset values are written as ``""``)."""
+    lines = ["# Quant Workbench settings (written by the app; safe to edit by hand)"]
+    lines += [f"{name} = {_toml_value(value)}" for name, value in settings.model_dump().items()]
+    return "\n".join(lines) + "\n"
+
+
+def save_settings(settings: Settings, settings_file: Path) -> None:
+    """Write ``settings`` to ``settings_file`` atomically (a crash never leaves half a file)."""
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    temporary = settings_file.with_name(settings_file.name + ".tmp")
+    temporary.write_text(settings_to_toml(settings), encoding="utf-8", newline="\n")
+    temporary.replace(settings_file)

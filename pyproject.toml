@@ -65,6 +65,9 @@ dev = [
 [project.scripts]
 qw = "quant_workbench.cli.main:app"
 
+[project.gui-scripts]
+quant-workbench = "quant_workbench.ui.app:main"
+
 [project.entry-points."quant_workbench.checkers"]
 # Built-in checkers register here too, so the plugin path is exercised by the
 # project itself (see docs/plugins.md). Populated from milestone M4.
@@ -116,6 +119,8 @@ ignore = [
 # Tests hold long literals (verbatim error text, fixtures) that are clearer unwrapped.
 "tests/**" = ["S101", "ANN", "PLR2004", "S105", "S106", "E501", "PLR0917", "ARG001", "ARG002"]
 "src/quant_workbench/cli/**" = ["T20"]  # the CLI's job is to print
+# Qt item models answer data() with one branch per role; that shape is the framework's.
+"src/quant_workbench/ui/models.py" = ["PLR0911"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["quant_workbench"]

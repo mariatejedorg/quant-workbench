@@ -47,3 +47,9 @@ def app_paths(tmp_path: Path) -> AppPaths:
     paths = AppPaths.under(tmp_path / "app-home")
     ensure_app_dirs(paths)
     return paths
+
+
+# The desktop UI tests need PySide6 (the ``gui`` extra); the headless core job runs without it.
+import importlib.util  # noqa: E402
+
+collect_ignore = [] if importlib.util.find_spec("PySide6") else ["gui"]

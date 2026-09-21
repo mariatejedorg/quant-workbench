@@ -22,7 +22,9 @@ ALLOWED_INTERNAL: dict[str, set[str]] = {
     "domain": set(),
     "application": {"domain"},
     "infrastructure": {"domain", "application"},
-    "cli": {"domain", "application", "bootstrap"},
+    # ``qw gui`` starts the desktop app, so the CLI may import ``ui`` (lazily, and only there);
+    # the reverse is forbidden, which keeps the two delivery layers from depending on each other.
+    "cli": {"domain", "application", "bootstrap", "ui"},
     "ui": {"domain", "application", "bootstrap"},
     "bootstrap": {"domain", "application", "infrastructure"},
 }

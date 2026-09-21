@@ -31,4 +31,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `setup-environment`, `set-git-identity`, `ignore-venv`).
 - Git adapter over the `git` CLI; it can only ever write the repository's own identity.
 - CLI: `qw doctor [--fix] [--json] [--only/--skip] [--deterministic] [--list]`.
+- Desktop app (PySide6): main window with project explorer (run-status badges), overview,
+  console with ANSI colours and per-project filter, job queue, problems panel, command
+  palette (Ctrl+K), settings dialog, light/dark theme from the portfolio palette, persistent
+  layout. The engine runs on its own thread behind an `AsyncBridge`; events reach the GUI in
+  batches. Launch with `qw gui` or `quant-workbench`.
+- Settings can be saved from the app (`settings.toml`, written atomically).
 

@@ -15,7 +15,8 @@ from rich.table import Table
 from quant_workbench import __version__
 from quant_workbench.bootstrap import build_container
 from quant_workbench.cli import catalog_commands, config_commands, doctor_commands, run_commands
-from quant_workbench.cli.common import configure_stdio, get_container
+from quant_workbench.cli.common import configure_stdio, get_container, handled
+from quant_workbench.domain.errors import WorkbenchError
 from quant_workbench.domain.paths import AppPaths
 
 app = typer.Typer(
@@ -82,3 +83,23 @@ def info(ctx: typer.Context) -> None:
     table.add_row("git identity", settings.expected_git_email)
     table.add_row("concurrency", str(settings.max_concurrency))
     console.print(table)
+
+
+@app.command()
+@handled
+def gui(
+    ctx: typer.Context,
+    workspace: Annotated[
+        Path | None,
+        typer.Option("--workspace", "-w", help="Folder that contains the projects."),
+    ] = None,
+) -> None:
+    """Open the desktop application."""
+    try:
+        from quant_workbench.ui.app import run_gui  # noqa: PLC0415 - optional dependency
+    except ImportError as error:
+        raise WorkbenchError(
+            "The desktop UI needs PySide6, which is not installed",
+            hint='Install it with: pip install "quant-workbench[gui]"',
+        ) from error
+    raise typer.Exit(run_gui(get_container(ctx), workspace=workspace))
