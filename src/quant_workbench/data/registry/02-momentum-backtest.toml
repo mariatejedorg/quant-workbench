@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "momentum-backtest"
+title = "Momentum Backtest"
+folder = "proyecto-2-momentum-backtest"
+category = "Foundations"
+order = 20
+description = "A 50/200 moving-average crossover backtested from scratch, with a hand-computed Sharpe ratio and no look-ahead bias."
+repo_url = "https://github.com/mariatejedorg/momentum-backtest"
+tags = ["backtesting", "signals"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/curva_capital.png", "outputs/precio_senales.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/strategy.py"
+symbols = []

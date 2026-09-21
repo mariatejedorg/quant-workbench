@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "capstone-multi-strategy-portfolio"
+title = "Capstone: Multi-Strategy Portfolio"
+folder = "proyecto-10-capstone-multi-estrategia"
+category = "Advanced models"
+order = 100
+description = "Momentum signals decide which stocks are in play and Markowitz allocation decides how much each gets, in one monthly-rebalanced backtest."
+repo_url = "https://github.com/mariatejedorg/capstone-multi-strategy-portfolio"
+tags = ["backtesting", "capstone"]
+depends_on = ["momentum-backtest", "markowitz-efficient-frontier"]
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/active_assets.png", "outputs/equity_curves.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/multi_strategy.py"
+symbols = []

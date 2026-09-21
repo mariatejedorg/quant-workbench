@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "markowitz-efficient-frontier"
+title = "Markowitz Portfolio Optimization"
+folder = "proyecto-9-markowitz-frontera-eficiente"
+category = "Advanced models"
+order = 90
+description = "Efficient frontier, minimum-variance and maximum-Sharpe portfolios via constrained optimisation over hand-written return and risk formulas."
+repo_url = "https://github.com/mariatejedorg/markowitz-efficient-frontier"
+tags = ["optimisation", "portfolio"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/efficient_frontier.png", "outputs/portfolio_weights.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/portfolio.py"
+symbols = []

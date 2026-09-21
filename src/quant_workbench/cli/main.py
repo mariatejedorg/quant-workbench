@@ -14,6 +14,8 @@ from rich.table import Table
 
 from quant_workbench import __version__
 from quant_workbench.bootstrap import build_container
+from quant_workbench.cli import catalog_commands
+from quant_workbench.cli.common import configure_stdio, get_container
 from quant_workbench.domain.paths import AppPaths
 
 app = typer.Typer(
@@ -23,6 +25,7 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+catalog_commands.register(app)
 
 
 def _version_callback(value: bool) -> None:
@@ -33,23 +36,29 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def _root(
+    ctx: typer.Context,
+    home: Annotated[
+        Path | None,
+        typer.Option(
+            "--home",
+            envvar="QW_HOME",
+            help="Keep all workbench files (settings, database, logs) under this directory.",
+        ),
+    ] = None,
     version: Annotated[
         bool,
         typer.Option("--version", callback=_version_callback, is_eager=True, help="Show version."),
     ] = False,
 ) -> None:
     """Quant Workbench command line."""
+    configure_stdio()
+    ctx.obj = build_container(paths=AppPaths.under(home) if home else None)
 
 
 @app.command()
-def info(
-    home: Annotated[
-        Path | None,
-        typer.Option("--home", help="Keep all workbench files under this directory."),
-    ] = None,
-) -> None:
+def info(ctx: typer.Context) -> None:
     """Show the resolved environment: versions, directories and settings."""
-    container = build_container(paths=AppPaths.under(home) if home else None)
+    container = get_container(ctx)
     settings = container.settings
 
     table = Table(title="Quant Workbench", show_header=False, box=None, pad_edge=False)

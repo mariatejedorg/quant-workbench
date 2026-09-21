@@ -9,10 +9,14 @@ from __future__ import annotations
 
 import re
 import secrets
-from typing import NewType
+from typing import TYPE_CHECKING, NewType
 
 from quant_workbench.domain.errors import InvalidSlugError
-from quant_workbench.domain.ports import Clock
+
+if TYPE_CHECKING:
+    # ``ids`` is a leaf module that ``ports`` (through ``project``) depends on, so the
+    # Clock protocol is imported for the type checker only, to avoid an import cycle.
+    from quant_workbench.domain.ports import Clock
 
 Slug = NewType("Slug", str)
 RunId = NewType("RunId", str)

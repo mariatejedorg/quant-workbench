@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "credit-risk-merton-model"
+title = "Credit Risk: Merton Structural Model"
+folder = "proyecto-7-riesgo-credito-merton"
+category = "Advanced models"
+order = 70
+description = "Equity modelled as a call option on the firm's assets to estimate a real company's distance to default and probability of default."
+repo_url = "https://github.com/mariatejedorg/credit-risk-merton-model"
+tags = ["credit", "merton"]
+depends_on = ["options-pricing-implied-volatility-surface", "monte-carlo-price-simulator"]
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/assets_vs_equity.png", "outputs/default_probability.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/credit.py"
+symbols = []

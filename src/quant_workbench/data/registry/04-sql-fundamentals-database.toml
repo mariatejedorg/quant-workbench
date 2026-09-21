@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "sql-fundamentals-database"
+title = "SQL Fundamentals Database"
+folder = "proyecto-4-fundamentales-sql"
+category = "Foundations"
+order = 40
+description = "A SQLite database of fundamentals for 18 companies plus price history, with four documented queries including a real JOIN."
+repo_url = "https://github.com/mariatejedorg/sql-fundamentals-database"
+tags = ["sql", "sqlite"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = []
+artifacts = ["db/fundamentales.db"]
+
+[[config_targets]]
+file = "src/data.py"
+symbols = ["COMPANIES", "PRICE_HISTORY_PERIOD"]

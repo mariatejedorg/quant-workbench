@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "market-data-analytics"
+title = "Market Data Analytics"
+folder = "proyecto-1-analisis-mercado"
+category = "Foundations"
+order = 10
+description = "Annualised return, volatility, maximum drawdown and correlations across ten assets (IBEX 35, S&P 500 and eight European stocks)."
+repo_url = "https://github.com/mariatejedorg/market-data-analytics"
+tags = ["pandas", "risk", "descriptive-statistics"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/heatmap_correlaciones.png", "outputs/precios_normalizados.png", "outputs/riesgo_rentabilidad.png"]
+artifacts = []
+
+[[config_targets]]
+file = "src/data.py"
+symbols = ["TICKERS"]

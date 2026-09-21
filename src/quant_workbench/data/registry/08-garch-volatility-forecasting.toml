@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "garch-volatility-forecasting"
+title = "GARCH Volatility Forecasting"
+folder = "proyecto-8-garch-volatilidad"
+category = "Advanced models"
+order = 80
+description = "GARCH(1,1) estimated by maximum likelihood, compared with historical and market-implied volatility for the same stock."
+repo_url = "https://github.com/mariatejedorg/garch-volatility-forecasting"
+tags = ["econometrics", "garch"]
+depends_on = ["options-pricing-implied-volatility-surface"]
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/volatility_clustering.png", "outputs/volatility_comparison.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/garch.py"
+symbols = []

@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "portfolio-risk-analytics"
+title = "Portfolio Risk Analytics"
+folder = "proyecto-5-portfolio-risk-analytics"
+category = "Foundations"
+order = 50
+description = "Beta, historical and parametric VaR, Sharpe and sector exposure, plus an auto-generated six-slide deck."
+repo_url = "https://github.com/mariatejedorg/portfolio-risk-analytics"
+tags = ["risk", "var", "capstone"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/cartera_vs_benchmark.png", "outputs/composicion_cartera.png", "outputs/evolucion_var.png"]
+artifacts = ["outputs/presentacion_portfolio_risk.pptx"]
+
+[[config_targets]]
+file = "config/portfolio.py"
+symbols = []

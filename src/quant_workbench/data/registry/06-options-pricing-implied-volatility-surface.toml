@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "options-pricing-implied-volatility-surface"
+title = "Options Pricing & Implied Volatility Surface"
+folder = "proyecto-6-opciones-volatilidad-implicita"
+category = "Advanced models"
+order = 60
+description = "Black-Scholes and its Greeks from scratch, inverted with Newton-Raphson against a live option chain to draw the volatility smile and surface."
+repo_url = "https://github.com/mariatejedorg/options-pricing-implied-volatility-surface"
+tags = ["derivatives", "black-scholes"]
+depends_on = ["monte-carlo-price-simulator"]
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/volatility_smile.png", "outputs/volatility_surface.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/options.py"
+symbols = []

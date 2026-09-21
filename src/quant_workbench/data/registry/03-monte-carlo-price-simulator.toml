@@ -1,0 +1,19 @@
+schema_version = 1
+slug = "monte-carlo-price-simulator"
+title = "Monte Carlo Price Simulator"
+folder = "proyecto-3-monte-carlo"
+category = "Foundations"
+order = 30
+description = "Geometric Brownian motion with ten thousand fully vectorised NumPy paths and no Python loops."
+repo_url = "https://github.com/mariatejedorg/monte-carlo-price-simulator"
+tags = ["simulation", "numpy", "gbm"]
+depends_on = []
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+images = ["outputs/fan_chart.png", "outputs/histograma_precios_finales.png"]
+artifacts = []
+
+[[config_targets]]
+file = "config/simulation.py"
+symbols = []

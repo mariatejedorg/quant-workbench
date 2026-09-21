@@ -48,7 +48,7 @@ def test_cli_version() -> None:
 
 
 def test_cli_info_lists_the_resolved_environment(accented_root: Path) -> None:
-    result = runner.invoke(app, ["info", "--home", str(accented_root)])
+    result = runner.invoke(app, ["--home", str(accented_root), "info"])
 
     assert result.exit_code == 0
     assert "mariatg.invers@gmail.com" in result.output

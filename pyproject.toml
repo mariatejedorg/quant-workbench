@@ -80,7 +80,7 @@ path = "src/quant_workbench/__init__.py"
 packages = ["src/quant_workbench"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "docs", "registry", "schemas", "failure_signatures", "templates"]
+include = ["src", "tests", "docs"]
 
 # --------------------------------------------------------------------- ruff
 [tool.ruff]
