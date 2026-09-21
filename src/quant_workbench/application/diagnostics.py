@@ -33,7 +33,7 @@ from quant_workbench.domain.diagnostics import (
 )
 from quant_workbench.domain.errors import WorkbenchError
 from quant_workbench.domain.ids import Slug
-from quant_workbench.domain.ports import GitGateway, ProjectFiles
+from quant_workbench.domain.ports import GitGateway, ProjectFiles, RunRepository
 from quant_workbench.domain.project import Project
 
 _log = logging.getLogger(__name__)
@@ -64,6 +64,8 @@ class CheckContext:
     runs: RunService | None
     #: The process environment (injected so tests can pretend variables are set).
     environ: Mapping[str, str]
+    #: Stored runs, for checks that compare the code with what it last produced.
+    repository: RunRepository | None = None
     #: Filled by the explainability checker during the run.
     scores: dict[Slug, ExplainabilityScore] = field(default_factory=dict)
     _sources: dict[Slug, tuple[SourceFile, ...]] = field(default_factory=dict)

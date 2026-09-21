@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 
+from sqlalchemy import Engine
+
 from quant_workbench.application.catalog import Catalog, ProjectCatalog
 from quant_workbench.application.checkers import default_checkers
 from quant_workbench.application.config import ConfigService
@@ -28,9 +30,17 @@ from quant_workbench.application.git_service import GitService
 from quant_workbench.application.jobs import JobExecutor
 from quant_workbench.application.runs import RunService
 from quant_workbench.application.settings import Settings, load_settings
+from quant_workbench.application.study import StudyService
 from quant_workbench.domain.failures import FailureSignature
 from quant_workbench.domain.paths import AppPaths
-from quant_workbench.domain.ports import Clock, EventBus, GitGateway, ProjectFiles, RunRepository
+from quant_workbench.domain.ports import (
+    Clock,
+    EventBus,
+    GitGateway,
+    ProjectFiles,
+    RunRepository,
+    StudyRepository,
+)
 from quant_workbench.infrastructure.clock import SystemClock
 from quant_workbench.infrastructure.config_editor import LibCstConfigEditor
 from quant_workbench.infrastructure.event_bus import InProcessEventBus
@@ -44,6 +54,7 @@ from quant_workbench.infrastructure.project_files import (
 from quant_workbench.infrastructure.resources import data_path
 from quant_workbench.infrastructure.signatures import load_signatures
 from quant_workbench.infrastructure.sqlite_runs import SqliteRunRepository, create_sqlite_engine
+from quant_workbench.infrastructure.sqlite_study import SqliteStudyRepository
 from quant_workbench.infrastructure.workspace import FileSystemWorkspace
 
 
@@ -101,11 +112,27 @@ class Container:
             environments=self.environments,
             runs=self.runs if with_runs else None,
             environ=dict(os.environ),
+            repository=self.repository,
         )
 
     @cached_property
+    def engine(self) -> Engine:
+        """The one database connection pool, shared by run history and study progress."""
+        return create_sqlite_engine(self.database)
+
+    @cached_property
     def repository(self) -> RunRepository:
-        return SqliteRunRepository(create_sqlite_engine(self.database))
+        return SqliteRunRepository(self.engine)
+
+    @cached_property
+    def study_repository(self) -> StudyRepository:
+        return SqliteStudyRepository(self.engine)
+
+    @cached_property
+    def study(self) -> StudyService:
+        return StudyService(
+            files=self.project_files, repository=self.study_repository, clock=self.clock
+        )
 
     @cached_property
     def executor(self) -> JobExecutor:
@@ -137,8 +164,13 @@ class Container:
         Safe to call more than once, and when no service was ever created.
         """
         repository = self.__dict__.pop("repository", None)
+        engine = self.__dict__.pop("engine", None)
+        self.__dict__.pop("study_repository", None)
+        self.__dict__.pop("study", None)
         if repository is not None:
-            repository.close()
+            repository.close()  # disposes the shared engine
+        elif engine is not None:
+            engine.dispose()
 
     @cached_property
     def environments(self) -> EnvironmentService:

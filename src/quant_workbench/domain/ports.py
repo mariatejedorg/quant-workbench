@@ -19,6 +19,7 @@ from quant_workbench.domain.ids import RunId, Slug
 from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
 from quant_workbench.domain.project import Project, ProjectSpec
 from quant_workbench.domain.runs import LogLine, LogStream, OutputFileState, Run
+from quant_workbench.domain.study import CardState
 
 E = TypeVar("E", bound=DomainEvent)
 
@@ -246,4 +247,16 @@ class GitGateway(Protocol):
 
         Hooks are never skipped. There is deliberately no ``push`` in this port.
         """
+        ...
+
+
+class StudyRepository(Protocol):
+    """Persistence of the spaced-repetition state of the study cards."""
+
+    def states(self, project: Slug | None = None) -> dict[str, CardState]:
+        """The state of every card that has been reviewed (all projects, or one)."""
+        ...
+
+    def save(self, card_id: str, project: Slug, state: CardState, reviewed_at: datetime) -> None:
+        """Insert or replace the state of one card."""
         ...

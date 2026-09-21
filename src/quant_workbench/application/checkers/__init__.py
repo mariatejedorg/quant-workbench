@@ -17,6 +17,7 @@ from quant_workbench.application.checkers.imports import (
     SiblingReferencesChecker,
 )
 from quant_workbench.application.checkers.outputs import OutputsFreshnessChecker
+from quant_workbench.application.checkers.readme_claims import ReadmeClaimsChecker
 from quant_workbench.application.checkers.ssl_cert import SslCertChecker
 from quant_workbench.application.diagnostics import Checker
 
@@ -34,5 +35,6 @@ def default_checkers() -> tuple[Checker, ...]:
         OutputsFreshnessChecker(),
         StaticAnalysisChecker(),
         ExplainabilityChecker(),
+        ReadmeClaimsChecker(),
         DeterminismChecker(),
     )

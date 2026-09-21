@@ -48,8 +48,23 @@ CREATE TABLE run_logs (
 CREATE UNIQUE INDEX ux_run_logs_run_seq ON run_logs (run_id, seq);
 """
 
+_V2 = """
+CREATE TABLE study_cards (
+    id             TEXT PRIMARY KEY,
+    project        TEXT NOT NULL,
+    ease           REAL NOT NULL,
+    interval_days  INTEGER NOT NULL,
+    repetitions    INTEGER NOT NULL,
+    lapses         INTEGER NOT NULL DEFAULT 0,
+    due            TEXT NOT NULL,
+    last_reviewed  TEXT NOT NULL,
+    reviews        INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX ix_study_cards_project_due ON study_cards (project, due);
+"""
+
 #: Ordered list of migrations; index + 1 is the schema version it produces.
-MIGRATIONS: tuple[str, ...] = (_V1,)
+MIGRATIONS: tuple[str, ...] = (_V1, _V2)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 

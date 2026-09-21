@@ -25,9 +25,10 @@ from quant_workbench.ui.views.git_view import GitView
 from quant_workbench.ui.views.graph_view import GraphView
 from quant_workbench.ui.views.history_view import HistoryView
 from quant_workbench.ui.views.readme_view import ReadmeView
+from quant_workbench.ui.views.study_view import StudyView
 
 #: Tab names in display order (the Overview tab, owned by the window, comes first).
-TAB_NAMES = ("config", "dashboard", "code", "readme", "history", "graph", "git")
+TAB_NAMES = ("config", "dashboard", "code", "readme", "history", "graph", "git", "study")
 _TITLES = {
     "config": "Config",
     "dashboard": "Dashboard",
@@ -36,6 +37,7 @@ _TITLES = {
     "history": "History",
     "graph": "Graph",
     "git": "Git",
+    "study": "Study",
 }
 #: Views whose content depends on how the project last ran.
 AFTER_RUN = ("history", "dashboard", "git")
@@ -54,6 +56,7 @@ class ProjectViews(QObject):
         self.history = HistoryView(controller, tokens)
         self.graph = GraphView(tokens)
         self.git = GitView(controller, tokens)
+        self.study = StudyView(controller, tokens)
         self.by_name = {
             "config": self.config,
             "dashboard": self.dashboard,
@@ -62,6 +65,7 @@ class ProjectViews(QObject):
             "history": self.history,
             "graph": self.graph,
             "git": self.git,
+            "study": self.study,
         }
         for name in TAB_NAMES:
             tabs.addTab(self.by_name[name], _TITLES[name])
