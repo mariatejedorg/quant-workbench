@@ -37,4 +37,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   layout. The engine runs on its own thread behind an `AsyncBridge`; events reach the GUI in
   batches. Launch with `qw gui` or `quant-workbench`.
 - Settings can be saved from the app (`settings.toml`, written atomically).
+- Functional GUI: configuration form (typed editors, help from the comments, diff review, undo/redo
+  that refuses to overwrite outside edits), dashboard viewer (embedded Chromium, auto-reload, local
+  Plotly cache, PDF/PNG export), code viewer/editor (Pygments highlighting, outline, search, guarded
+  editing with backups), README viewer, run history (log, two-run comparison of config/metrics/outputs,
+  metric trend chart), dependency graph with impact analysis and "re-run impacted", Git panel
+  (status, diff, log, guarded commit, no push), and fixes from the Problems panel with a preview.
+- Run comparison, metric series, graph layout and a guarded git commit use case as tested Qt-free code.
+- Fixed: subprocess transports are closed explicitly after a kill or timeout.
 

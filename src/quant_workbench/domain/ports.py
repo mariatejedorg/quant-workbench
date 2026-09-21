@@ -14,7 +14,7 @@ from typing import Protocol, TypeVar, runtime_checkable
 
 from quant_workbench.domain.config import Constant
 from quant_workbench.domain.events import DomainEvent
-from quant_workbench.domain.git import GitState
+from quant_workbench.domain.git import CommitInfo, GitState
 from quant_workbench.domain.ids import RunId, Slug
 from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
 from quant_workbench.domain.project import Project, ProjectSpec
@@ -231,4 +231,19 @@ class GitGateway(Protocol):
 
     def set_local_config(self, root: Path, key: str, value: str) -> None:
         """Set ``key`` in this repository's own config. Never touches the global config."""
+        ...
+
+    def log(self, root: Path, limit: int = 20) -> tuple[CommitInfo, ...]:
+        """The most recent commits of the current branch, newest first."""
+        ...
+
+    def diff(self, root: Path, relative: str | None = None) -> str:
+        """Uncommitted changes against ``HEAD`` (of one path, or of everything tracked)."""
+        ...
+
+    def commit(self, root: Path, message: str, paths: Sequence[str]) -> str:
+        """Stage ``paths`` (everything when empty) and commit; returns the new short hash.
+
+        Hooks are never skipped. There is deliberately no ``push`` in this port.
+        """
         ...

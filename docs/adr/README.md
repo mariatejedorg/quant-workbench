@@ -14,3 +14,4 @@ is a new record that supersedes the old one.
 | [0005](0005-config-edits-are-planned-verified-and-byte-exact.md) | Config edits are planned, verified by read-back and byte-exact | Accepted |
 | [0006](0006-the-doctor-is-a-set-of-small-rules-with-previewable-fixes.md) | The doctor is a set of small rules with previewable fixes | Accepted |
 | [0007](0007-the-gui-talks-to-a-controller-and-a-command-registry.md) | The GUI talks to a controller and a command registry | Accepted |
+| [0008](0008-views-are-lazy-and-never-change-the-project-behind-your-back.md) | Views are lazy, and nothing changes a project behind the user's back | Accepted |

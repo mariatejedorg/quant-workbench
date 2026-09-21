@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,21 @@ class GitState:
     @property
     def is_clean(self) -> bool:
         return not self.dirty
+
+
+@dataclass(frozen=True, slots=True)
+class CommitInfo:
+    """One entry of ``git log``."""
+
+    hash: str
+    author: str
+    email: str
+    date: datetime
+    subject: str
+
+    @property
+    def short(self) -> str:
+        return self.hash[:7]
 
 
 def remote_host(url: str) -> str | None:

@@ -17,14 +17,18 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 
 from quant_workbench.domain.errors import GitError
-from quant_workbench.domain.git import GitState
+from quant_workbench.domain.git import CommitInfo, GitState
 
 _TIMEOUT_SECONDS = 30
 #: The only keys ``set_local_config`` accepts.
 _WRITABLE_KEYS = frozenset({"user.email", "user.name"})
+#: Fields per record of the ``git log`` format used by :meth:`GitCli.log`.
+_LOG_FIELDS = 5
 _AHEAD_BEHIND = re.compile(r"\+(\d+) -(\d+)")
 #: Windows: do not flash a console window for every git call made from the GUI.
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0
@@ -94,6 +98,42 @@ class GitCli:
         if key not in _WRITABLE_KEYS:
             raise GitError(f"Refusing to set git config key {key!r}", hint="Only identity keys.")
         self._run(root, "config", "--local", key, value)
+
+    def commit(self, root: Path, message: str, paths: Sequence[str]) -> str:
+        """Stage and commit. Hooks run (never ``--no-verify``); nothing is ever pushed."""
+        if not message.strip():
+            raise GitError("A commit needs a message")
+        self._run(root, "add", "--", *(paths or ["."]))
+        self._run(root, "commit", "-m", message)
+        return self._run(root, "rev-parse", "--short", "HEAD").stdout.strip()
+
+    # ---------------------------------------------------------------- history
+    def log(self, root: Path, limit: int = 20) -> tuple[CommitInfo, ...]:
+        fmt = "%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1e"
+        result = self._run(root, "log", f"-n{limit}", f"--format={fmt}", check=False)
+        if result.returncode != 0:  # a repository without commits yet
+            return ()
+        commits: list[CommitInfo] = []
+        for record in result.stdout.split("\x1e"):
+            fields = record.strip("\n").split("\x1f")
+            if len(fields) == _LOG_FIELDS:
+                commits.append(
+                    CommitInfo(
+                        fields[0],
+                        fields[1],
+                        fields[2],
+                        datetime.fromisoformat(fields[3]),
+                        fields[4],
+                    )
+                )
+        return tuple(commits)
+
+    def diff(self, root: Path, relative: str | None = None) -> str:
+        arguments = ["diff", "--no-color", "HEAD"]
+        if relative is not None:
+            arguments += ["--", relative]
+        result = self._run(root, *arguments, check=False)
+        return result.stdout if result.returncode == 0 else ""
 
     # --------------------------------------------------------------- internals
     def _run(self, root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:

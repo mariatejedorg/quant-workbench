@@ -43,6 +43,10 @@ class FileChange:
     after: str
     names: tuple[str, ...]
 
+    def inverse(self) -> FileChange:
+        """The change that undoes this one (used for undo)."""
+        return FileChange(self.file, self.after, self.before, self.names)
+
     @property
     def diff(self) -> str:
         """Unified diff, in the ``a/`` / ``b/`` form that ``git apply`` also understands."""
@@ -66,6 +70,10 @@ class ConfigPlan:
     @property
     def is_empty(self) -> bool:
         return not self.changes
+
+    def inverse(self) -> ConfigPlan:
+        """The plan that restores the files this one changes (applies only if nothing moved)."""
+        return ConfigPlan(self.project, tuple(change.inverse() for change in self.changes))
 
     @property
     def diff(self) -> str:

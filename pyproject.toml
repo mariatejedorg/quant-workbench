@@ -142,7 +142,7 @@ disallow_untyped_decorators = false
 warn_return_any = false
 
 [[tool.mypy.overrides]]
-module = ["libcst.*", "watchdog.*"]
+module = ["libcst.*", "watchdog.*", "pygments.*"]
 ignore_missing_imports = true
 
 # ------------------------------------------------------------------- pytest

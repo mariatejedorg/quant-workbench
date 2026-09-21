@@ -149,6 +149,7 @@ QListView, QTableView, QTreeView, QTextBrowser, QPlainTextEdit, QLineEdit, QSpin
 }}
 QLineEdit, QSpinBox, QComboBox {{ padding: 4px 6px; min-height: 20px; }}
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border-color: {t.accent}; }}
+QLineEdit[invalid="true"], QPlainTextEdit[invalid="true"] {{ border: 1px solid {t.error}; }}
 QListView::item {{ padding: 5px 6px; }}
 QListView::item:selected, QTableView::item:selected {{ background: {t.selection}; color: {t.ink}; }}
 QTableView {{ gridline-color: {t.grid}; alternate-background-color: {t.window}; }}
@@ -167,6 +168,9 @@ QPushButton {{ background: {t.surface}; border: 1px solid {t.baseline}; border-r
 QPushButton:hover {{ border-color: {t.accent}; }}
 QPushButton:default {{ background: {t.accent}; border-color: {t.accent}; color: #ffffff; }}
 QPushButton:disabled {{ color: {t.ink_muted}; }}
+QPushButton:default:disabled {{ background: {t.surface}; border-color: {t.baseline}; color: {t.ink_muted}; }}
+QScrollArea {{ background: {t.surface}; border: 1px solid {t.baseline}; border-radius: 4px; }}
+#form-host {{ background: {t.surface}; }}
 
 QStatusBar {{ background: {t.window}; border-top: 1px solid {t.grid}; color: {t.ink_secondary}; }}
 QProgressBar {{ border: 1px solid {t.baseline}; border-radius: 3px; background: {t.surface}; text-align: center;

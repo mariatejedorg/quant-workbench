@@ -24,6 +24,7 @@ from quant_workbench.application.config import ConfigService
 from quant_workbench.application.diagnostics import CheckContext, DoctorService
 from quant_workbench.application.environments import EnvironmentService
 from quant_workbench.application.fixes import FixService
+from quant_workbench.application.git_service import GitService
 from quant_workbench.application.jobs import JobExecutor
 from quant_workbench.application.runs import RunService
 from quant_workbench.application.settings import Settings, load_settings
@@ -74,6 +75,10 @@ class Container:
     @cached_property
     def git(self) -> GitGateway:
         return GitCli()
+
+    @cached_property
+    def git_service(self) -> GitService:
+        return GitService(self.git, self.settings)
 
     @cached_property
     def doctor(self) -> DoctorService:

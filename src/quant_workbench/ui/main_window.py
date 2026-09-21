@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QSettings, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QByteArray, QModelIndex, QSettings, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,8 +36,9 @@ from PySide6.QtWidgets import (
 )
 
 from quant_workbench import __version__
+from quant_workbench.application.fixes import FixPreview
 from quant_workbench.application.settings import Settings, save_settings
-from quant_workbench.domain.diagnostics import DoctorReport
+from quant_workbench.domain.diagnostics import DoctorReport, Finding
 from quant_workbench.domain.run_events import (
     BatchProgress,
     RunFinished,
@@ -48,6 +49,7 @@ from quant_workbench.domain.run_events import (
 from quant_workbench.domain.runs import RunStatus
 from quant_workbench.ui.commands import Command, CommandRegistry
 from quant_workbench.ui.controller import AppController
+from quant_workbench.ui.dialogs import FixPreviewDialog
 from quant_workbench.ui.models import (
     FindingsModel,
     ProjectListModel,
@@ -59,9 +61,11 @@ from quant_workbench.ui.models import (
 from quant_workbench.ui.settings_dialog import SettingsDialog
 from quant_workbench.ui.summary import project_summary_html
 from quant_workbench.ui.theme import Tokens, build_stylesheet, tokens_for
+from quant_workbench.ui.views.hub import TAB_NAMES, ProjectViews
 from quant_workbench.ui.widgets.console import ConsoleView
 from quant_workbench.ui.widgets.palette import CommandPalette
 
+_BOTTOM_DOCK_HEIGHT = 210
 _ORGANISATION = "QuantWorkbench"
 _APPLICATION = "Quant Workbench"
 
@@ -92,7 +96,8 @@ class MainWindow(QMainWindow):
         self._settings_file = settings_file
         self._store = store or make_settings_store()
         self._tokens = self._resolve_tokens(settings.theme)
-        self._active_batch = False
+        #: Asks the user to confirm a fix; tests replace it to skip the modal dialog.
+        self.confirm_fix: Callable[[FixPreview], bool] = self._show_fix_dialog
         self.commands = CommandRegistry()
 
         self._build_models()
@@ -144,6 +149,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.overview)
         self.tabs = QTabWidget()
         self.tabs.addTab(page, "Overview")
+        self.views = ProjectViews(self._controller, self._tokens, self.tabs)
+        self.views.graph.on_select = self.select_project
+        self.views.graph.on_run_impacted = self._controller.run_impacted
         self.setCentralWidget(self.tabs)
 
     def add_view(self, title: str, widget: QWidget) -> int:
@@ -151,7 +159,16 @@ class MainWindow(QMainWindow):
         return self.tabs.addTab(widget, title)
 
     def _build_docks(self) -> None:
-        # ---- projects (left)
+        self._build_projects_dock()
+        self._build_console_dock()
+        self._build_jobs_dock()
+        self._build_problems_dock()
+        self.tabifyDockWidget(self.console_dock, self.jobs_dock)
+        self.tabifyDockWidget(self.jobs_dock, self.problems_dock)
+        self.console_dock.raise_()
+        self.resizeDocks([self.console_dock], [_BOTTOM_DOCK_HEIGHT], Qt.Orientation.Vertical)
+
+    def _build_projects_dock(self) -> None:
         self.filter_box = QLineEdit()
         self.filter_box.setPlaceholderText("Filter projects…")
         self.filter_box.setClearButtonEnabled(True)
@@ -170,7 +187,7 @@ class MainWindow(QMainWindow):
         self.projects_dock = self._dock("Projects", holder, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.projects_dock.setMinimumWidth(250)
 
-        # ---- console (bottom)
+    def _build_console_dock(self) -> None:
         self.console = ConsoleView(self._tokens)
         self.only_selected = QCheckBox("Only the selected project")
         self.only_selected.toggled.connect(lambda _: self._apply_console_filter())
@@ -189,7 +206,7 @@ class MainWindow(QMainWindow):
             "Console", console_holder, Qt.DockWidgetArea.BottomDockWidgetArea
         )
 
-        # ---- jobs (bottom)
+    def _build_jobs_dock(self) -> None:
         self.jobs_view = self._table(
             self.runs_model, {0: 230, 1: 90, 2: 100, 3: 90, 4: 90, 5: 50}, stretch=0
         )
@@ -205,17 +222,28 @@ class MainWindow(QMainWindow):
         jobs_layout.addLayout(row)
         self.jobs_dock = self._dock("Jobs", jobs_holder, Qt.DockWidgetArea.BottomDockWidgetArea)
 
-        # ---- problems (bottom)
+    def _build_problems_dock(self) -> None:
         self.problems_view = self._table(
             self.findings_model, {0: 80, 1: 220, 3: 190, 4: 50}, stretch=2
         )
         self.problems_view.doubleClicked.connect(self._problem_activated)
-        self.problems_dock = self._dock(
-            "Problems", self.problems_view, Qt.DockWidgetArea.BottomDockWidgetArea
+        self.fix_button = QPushButton("Fix…")
+        self.fix_button.setToolTip("Preview and apply the automatic fix of the selected problem")
+        self.fix_button.clicked.connect(lambda: self.commands.execute("problems.fix"))
+        self.problems_view.selectionModel().selectionChanged.connect(
+            lambda *_: self._update_actions()
         )
-        self.tabifyDockWidget(self.console_dock, self.jobs_dock)
-        self.tabifyDockWidget(self.jobs_dock, self.problems_dock)
-        self.console_dock.raise_()
+        problems_holder = QWidget()
+        problems_layout = QVBoxLayout(problems_holder)
+        problems_layout.setContentsMargins(6, 6, 6, 6)
+        problems_layout.addWidget(self.problems_view)
+        problems_row = QHBoxLayout()
+        problems_row.addStretch(1)
+        problems_row.addWidget(self.fix_button)
+        problems_layout.addLayout(problems_row)
+        self.problems_dock = self._dock(
+            "Problems", problems_holder, Qt.DockWidgetArea.BottomDockWidgetArea
+        )
 
     def _dock(self, title: str, widget: QWidget, area: Qt.DockWidgetArea) -> QDockWidget:
         dock = QDockWidget(title, self)
@@ -345,7 +373,21 @@ class MainWindow(QMainWindow):
             enabled=has_selection,
         )
 
+        add(
+            "problems.fix",
+            "Apply the fix of the selected problem…",
+            self.fix_selected_problem,
+            category="Doctor",
+            enabled=lambda: self._selected_fixable() is not None,
+        )
         add("console.clear", "Clear the console", self.console.clear_console, category="View")
+        for tab in ("overview", *TAB_NAMES):
+            add(
+                f"view.tab.{tab}",
+                f"Show {tab}",
+                lambda name=tab: self.views.show(name),  # type: ignore[misc]
+                category="View",
+            )
         add(
             "view.palette",
             "Command palette…",
@@ -410,6 +452,9 @@ class MainWindow(QMainWindow):
         if catalog is None:
             return
         self.project_model.set_projects(catalog.projects, self._controller.latest_run)
+        self.views.set_catalog(
+            catalog, {p.slug: self.project_model.status(p.slug) for p in catalog.projects}
+        )
         self.findings_model.set_report(None)
         self.workspace_label.setText(f"{catalog.workspace}  -  {len(catalog.projects)} projects")
         if catalog.projects:
@@ -422,13 +467,17 @@ class MainWindow(QMainWindow):
         for event in batch:
             if isinstance(event, RunQueued | RunStarted | RunFinished):
                 self.project_model.set_status(event.run.project, event.run.status)
+                self.views.set_status(event.run.project, event.run.status)
             elif isinstance(event, RunOutput):
                 self.console.add_line(
                     event.project, event.line.text, event.line.stream, event.line.level
                 )
             elif isinstance(event, BatchProgress):
                 self._batch_progress(event)
-        if any(isinstance(e, RunFinished) for e in batch):
+        finished = [e.run.project for e in batch if isinstance(e, RunFinished)]
+        for slug in dict.fromkeys(finished):
+            self.views.run_finished(slug)
+        if finished:
             self._refresh_overview()
 
     def _batch_progress(self, event: BatchProgress) -> None:
@@ -469,6 +518,8 @@ class MainWindow(QMainWindow):
         return False
 
     def _selection_changed(self) -> None:
+        slug = self.selected_slug()
+        self.views.set_project(self._controller.project(slug) if slug else None)
         self._refresh_overview()
         self._apply_console_filter()
         self._update_actions()
@@ -495,10 +546,39 @@ class MainWindow(QMainWindow):
     def _apply_console_filter(self) -> None:
         self.console.set_filter(self.selected_slug() if self.only_selected.isChecked() else None)
 
-    def _problem_activated(self, index: object) -> None:
-        slug = self.problems_view.model().index(index.row(), 0).data(SlugRole)  # type: ignore[attr-defined]
-        if slug:
-            self.select_project(slug)
+    def _selected_finding(self) -> Finding | None:
+        index = self.problems_view.currentIndex()
+        return self.findings_model.finding_at(index.row()) if index.isValid() else None
+
+    def _selected_fixable(self) -> Finding | None:
+        finding = self._selected_finding()
+        return finding if finding and self._controller.can_fix(finding) else None
+
+    def _problem_activated(self, index: QModelIndex) -> None:
+        """Double-click: select the project and open the code where the problem is."""
+        finding = self.findings_model.finding_at(index.row())
+        if finding.project:
+            self.select_project(finding.project)
+        if finding.location is not None and finding.project:
+            self.views.open_code(finding.location.file, finding.location.line)
+
+    def fix_selected_problem(self) -> None:
+        """Preview the selected problem's fix and, if the user agrees, apply it."""
+        finding = self._selected_fixable()
+        if finding is None:
+            return
+        self._controller.bridge.submit(
+            self._controller.preview_fix(finding),
+            on_result=lambda preview: self._confirm_and_apply(finding, preview),
+            on_error=self._controller.report_error,
+        )
+
+    def _confirm_and_apply(self, finding: Finding, preview: FixPreview) -> None:
+        if self.confirm_fix(preview):
+            self._controller.apply_fix(finding)
+
+    def _show_fix_dialog(self, preview: FixPreview) -> bool:
+        return FixPreviewDialog(preview, self._tokens, self).exec() == 1
 
     def _update_actions(self) -> None:
         for command in self.commands.all():
@@ -570,6 +650,7 @@ class MainWindow(QMainWindow):
         for model in (self.project_model, self.runs_model, self.findings_model):
             model.set_tokens(self._tokens)
         self.console.set_tokens(self._tokens)
+        self.views.set_tokens(self._tokens)
         self._refresh_overview()
 
     @property

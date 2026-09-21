@@ -161,3 +161,86 @@ def test_a_failing_command_reports_git_s_own_message(accented_root: Path) -> Non
 def test_the_environment_of_the_test_is_isolated(repo: Path) -> None:
     """Guard for the fixture itself: git must be reading the throw-away config."""
     assert os.environ["GIT_CONFIG_GLOBAL"].endswith("global-gitconfig")
+
+
+# ------------------------------------------------------- log, diff and commit
+def test_the_log_lists_commits_newest_first_with_their_author(repo: Path) -> None:
+    (repo / "notes.txt").write_text("more\n", encoding="utf-8")
+    git(repo, "commit", "-q", "-am", "second: with, punctuation")
+
+    commits = GitCli().log(repo, 10)
+
+    assert [c.subject for c in commits] == ["second: with, punctuation", "first"]
+    assert commits[0].author == "Test"
+    assert commits[0].email == "t@example.org"
+    assert len(commits[0].hash) == 40
+    assert commits[0].short == commits[0].hash[:7]
+    assert commits[0].date.tzinfo is not None
+    assert len(GitCli().log(repo, 1)) == 1
+
+
+def test_the_log_of_a_repository_without_commits_is_empty(accented_root: Path) -> None:
+    root = accented_root / "vacio"
+    root.mkdir()
+    git(root, "init", "-q", "-b", "main")
+
+    assert GitCli().log(root) == ()
+
+
+def test_the_diff_shows_uncommitted_changes_of_one_path_or_all(repo: Path) -> None:
+    (repo / "notes.txt").write_text("changed\n", encoding="utf-8")
+    (repo / "análisis.py").write_text("x = 2\n", encoding="utf-8")
+    cli = GitCli()
+
+    everything = cli.diff(repo)
+    only_notes = cli.diff(repo, "notes.txt")
+
+    assert "+changed" in everything
+    assert "+x = 2" in everything
+    assert "+changed" in only_notes
+    assert "x = 2" not in only_notes
+
+
+def test_the_diff_of_a_clean_tree_is_empty(repo: Path) -> None:
+    assert GitCli().diff(repo) == ""
+
+
+def test_commit_stages_the_given_paths_only_and_returns_the_hash(repo: Path) -> None:
+    (repo / "notes.txt").write_text("staged\n", encoding="utf-8")
+    (repo / "otro.txt").write_text("left alone\n", encoding="utf-8")
+    git(repo, "config", "--local", "user.email", "maria@example.org")
+    git(repo, "config", "--local", "user.name", "María")
+    cli = GitCli()
+
+    short = cli.commit(repo, "only notes", ["notes.txt"])
+
+    assert short == cli.log(repo, 1)[0].short
+    assert cli.log(repo, 1)[0].email == "maria@example.org"
+    assert cli.state(repo).dirty == ("otro.txt",)  # the other file was not committed
+
+
+def test_commit_without_paths_commits_everything_and_needs_a_message(repo: Path) -> None:
+    (repo / "notes.txt").write_text("a\n", encoding="utf-8")
+    (repo / "nuevo.txt").write_text("b\n", encoding="utf-8")
+    git(repo, "config", "--local", "user.email", "maria@example.org")
+    git(repo, "config", "--local", "user.name", "María")
+
+    with pytest.raises(GitError, match="needs a message"):
+        GitCli().commit(repo, "  ", [])
+    GitCli().commit(repo, "all of it", [])
+
+    assert GitCli().state(repo).is_clean
+
+
+def test_the_hooks_of_the_repository_are_respected(repo: Path) -> None:
+    """The workbench never passes --no-verify: a failing pre-commit hook blocks the commit."""
+    hook = repo / ".git" / "hooks" / "pre-commit"
+    hook.write_text("#!/bin/sh\necho blocked by hook >&2\nexit 1\n", encoding="utf-8", newline="\n")
+    (repo / "notes.txt").write_text("x\n", encoding="utf-8")
+    git(repo, "config", "--local", "user.email", "maria@example.org")
+    git(repo, "config", "--local", "user.name", "María")
+
+    with pytest.raises(GitError, match="blocked by hook"):
+        GitCli().commit(repo, "try", ["notes.txt"])
+
+    assert [c.subject for c in GitCli().log(repo)] == ["first"]

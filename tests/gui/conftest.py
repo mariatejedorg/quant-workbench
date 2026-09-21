@@ -13,6 +13,8 @@ import pytest
 # Must be set before Qt creates its platform plugin. On Windows the offscreen platform has no
 # fonts of its own, so point it at the system's (otherwise every glyph is drawn as a box).
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# Chromium (QtWebEngine) inside a headless test process: no sandbox, no GPU
+os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox --disable-gpu")
 if sys.platform == "win32":
     os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
 
@@ -40,9 +42,33 @@ def make_venv(root: Path) -> None:
     )
 
 
+CONFIG_TEXT = (
+    "# Rolling window, in sessions.\r\n"
+    "WINDOW = 252  # one trading year\r\n"
+    'TICKER = "AAPL"\r\n'
+    "RANGE = (0.7, 1.3)\r\n"
+    "ENABLED = True\r\n"
+    "HOLDINGS = {\r\n"
+    '    "A": 0.5,\r\n'
+    '    "B": 0.5,\r\n'
+    "}\r\n"
+)
+MANIFEST_EXTRAS = (
+    '\n[[config_targets]]\nfile = "config/settings.py"\nsymbols = []\n'
+    '\n[[metrics]]\nname = "sharpe"\npattern = \'Sharpe:\\s*([\\d.]+)\'\nkind = "float"\n'
+)
+#: A bare ``except`` on a known line, so the doctor produces a finding with a location.
+UTIL_TEXT = "def risky():\n    try:\n        return 1\n    except:\n        return 0\n"
+
+
 @pytest.fixture
 def workspace(accented_root: Path) -> Path:
-    """``alpha`` (ok), ``beta`` (needs alpha), ``slow`` (sleeps) and ``broken`` (fails)."""
+    """``alpha`` (ok), ``beta`` (needs alpha), ``slow`` (sleeps) and ``broken`` (fails).
+
+    Each has a configuration file (CRLF, like the real ones), a README, a metric extractor and
+    a real virtual environment. ``alpha`` also has seeded defects for the doctor to find: it
+    uses yfinance without a CA bundle (``beta`` has one to copy) and a bare ``except``.
+    """
     layout = {
         "alpha": ((), OK_MAIN),
         "beta": (("alpha",), OK_MAIN),
@@ -50,13 +76,22 @@ def workspace(accented_root: Path) -> Path:
         "broken": ((), FAIL_MAIN),
     }
     for name, (deps, main) in layout.items():
+        extra = {"src/main.py": main, "README.md": f"# {name.title()}\n\nSome **notes**.\n"}
+        if name == "alpha":
+            extra["src/data.py"] = "import yfinance\n\nDATA = yfinance\n"
+            extra["src/util.py"] = UTIL_TEXT
+        if name == "beta":
+            extra[".certs/cacert.pem"] = "-----BEGIN CERTIFICATE-----\nPEM\n"
         write_project(
             accented_root,
             name,
             refs=list(deps),
-            manifest=manifest_toml(name, deps=deps),
-            extra_files={"src/main.py": main},
+            manifest=manifest_toml(name, deps=deps) + MANIFEST_EXTRAS,
+            extra_files=extra,
         )
+        config = accented_root / name / "config" / "settings.py"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_bytes(CONFIG_TEXT.encode("utf-8"))  # exact bytes: CRLF must survive edits
         make_venv(accented_root / name)
     return accented_root
 

@@ -433,3 +433,31 @@ def find_secrets(text: str) -> tuple[SecretHit, ...]:
                 hits.append(SecretHit(kind, number, certain))
                 break
     return tuple(hits)
+
+
+# ---------------------------------------------------------------------- outline
+@dataclass(frozen=True, slots=True)
+class Symbol:
+    """A class or function definition, for the code viewer's outline."""
+
+    name: str
+    kind: str  # "class", "function" or "method"
+    line: int
+    depth: int
+
+
+def outline(tree: ast.Module) -> tuple[Symbol, ...]:
+    """Classes, functions and methods in source order (nested functions are left out)."""
+    symbols: list[Symbol] = []
+
+    def visit(body: list[ast.stmt], depth: int, in_class: bool) -> None:
+        for node in body:
+            if isinstance(node, ast.ClassDef):
+                symbols.append(Symbol(node.name, "class", node.lineno, depth))
+                visit(node.body, depth + 1, True)
+            elif isinstance(node, _DEF_NODES):
+                kind = "method" if in_class else "function"
+                symbols.append(Symbol(node.name, kind, node.lineno, depth))
+
+    visit(tree.body, 0, False)
+    return tuple(symbols)

@@ -169,6 +169,12 @@ class AsyncSubprocessRunner:
             await self._finish_readers(readers)
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await sampler
+            # asyncio only closes a subprocess transport when every pipe has seen EOF; after a
+            # kill or a timeout that may never happen, and the transport would then be
+            # finalised against a closed event loop ("unclosed transport" warnings).
+            transport = getattr(process, "_transport", None)
+            if transport is not None:
+                transport.close()
 
         return ProcessOutcome(
             exit_code=None if timed_out else process.returncode,

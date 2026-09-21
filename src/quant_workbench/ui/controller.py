@@ -8,26 +8,32 @@ every widget testable with a fake controller and the controller testable without
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import TypeVar
 
 from PySide6.QtCore import QObject, Signal
 
 from quant_workbench.application.catalog import Catalog
+from quant_workbench.application.config import ApplyResult, ConfigPlan, ProjectConstant
 from quant_workbench.application.diagnostics import DoctorOptions
 from quant_workbench.application.fixes import FixPreview
 from quant_workbench.application.runs import BatchResult
 from quant_workbench.bootstrap import Container
+from quant_workbench.domain.code_analysis import parse
 from quant_workbench.domain.diagnostics import DoctorReport, Finding, Severity
 from quant_workbench.domain.errors import WorkbenchError
 from quant_workbench.domain.ids import RunId, Slug
 from quant_workbench.domain.project import Project
 from quant_workbench.domain.run_events import BatchProgress, RunFinished
-from quant_workbench.domain.runs import Run
+from quant_workbench.domain.runs import LogLine, Run
 from quant_workbench.ui.async_bridge import AsyncBridge, EventRelay
 
 _log = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class AppController(QObject):
@@ -43,6 +49,8 @@ class AppController(QObject):
     message = Signal(str, str)
     #: ``True`` while any job submitted through the controller is running.
     busy_changed = Signal(bool)
+    #: A project's configuration files were rewritten (edit, undo or redo): its slug.
+    config_changed = Signal(str)
 
     def __init__(self, container: Container, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -89,12 +97,7 @@ class AppController(QObject):
 
     def _fail(self, error: BaseException) -> None:
         self._untrack()
-        if isinstance(error, WorkbenchError):
-            hint = f"\n{error.hint}" if error.hint else ""
-            self.message.emit("error", f"{error.message}{hint}")
-        else:
-            _log.error("unexpected failure in the engine", exc_info=error)
-            self.message.emit("error", f"Unexpected error: {type(error).__name__}: {error}")
+        self.report_error(error)
 
     # ------------------------------------------------------------------- catalog
     def open_workspace(self, workspace: Path) -> bool:
@@ -196,6 +199,115 @@ class AppController(QObject):
         return await self.container.fixes.preview(
             finding, self.container.check_context(self.catalog)
         )
+
+    def apply_fix(self, finding: Finding) -> None:
+        """Apply a finding's automatic fix, then diagnose the project again."""
+        if self.catalog is None or finding.project is None:
+            return
+        context = self.container.check_context(self.catalog)
+        slug = str(finding.project)
+
+        async def apply() -> str:
+            return await self.container.fixes.apply(finding, context)
+
+        def done(text: str) -> None:
+            self._untrack()
+            self.message.emit("info", text)
+            self.run_doctor([slug])
+
+        self._track()
+        self._bridge.submit(apply(), on_result=done, on_error=self._fail)
+
+    # ------------------------------------------------------------- configuration
+    def config_constants(self, slug: str) -> tuple[ProjectConstant, ...]:
+        """The editable constants of a project (reads its configuration files)."""
+        project = self.project(slug)
+        return self.container.config.constants(project) if project else ()
+
+    def plan_config(self, slug: str, changes: Mapping[str, object]) -> ConfigPlan:
+        """The effect of setting constants; raises ``UnsafeEditError`` when it cannot be done."""
+        project = self._require_project(slug)
+        return self.container.config.plan(project, changes)
+
+    def apply_config(self, slug: str, plan: ConfigPlan) -> ApplyResult:
+        """Write a plan (or the inverse of one, for undo) and tell the views."""
+        result = self.container.config.apply(self._require_project(slug), plan)
+        self.config_changed.emit(slug)
+        return result
+
+    def _require_project(self, slug: str) -> Project:
+        project = self.project(slug)
+        if project is None:
+            raise WorkbenchError(f"No project {slug!r} in the open workspace")
+        return project
+
+    # -------------------------------------------------------------------- sources
+    def project_sources(self, slug: str) -> tuple[str, ...]:
+        """Relative paths of the project's Python files, its configuration files and README."""
+        project = self.project(slug)
+        if project is None:
+            return ()
+        files = self.container.project_files
+        extra = [t.file for t in project.spec.config_targets]
+        readme = [n for n in ("README.md",) if files.exists(project, n)]
+        return tuple(dict.fromkeys([*files.python_sources(project), *extra, *readme]))
+
+    def read_source(self, slug: str, relative: str) -> str | None:
+        project = self.project(slug)
+        return self.container.project_files.read_text(project, relative) if project else None
+
+    def save_source(self, slug: str, relative: str, text: str, *, expected: str) -> None:
+        """Write a source file the user edited, keeping a backup.
+
+        Refused if the file no longer holds ``expected`` (someone else changed it) or, for
+        Python, if the new text does not parse: the viewer must not break a project.
+        """
+        project = self._require_project(slug)
+        files = self.container.project_files
+        if files.read_text(project, relative) != expected:
+            raise WorkbenchError(
+                f"{relative} changed on disk since it was opened",
+                hint="Reload the file and apply your edit again.",
+            )
+        if relative.endswith(".py") and parse(text) is None:
+            raise WorkbenchError(
+                f"{relative} would not be valid Python",
+                hint="Fix the syntax error first; nothing was saved.",
+            )
+        files.write_text(project, relative, text)
+        self.config_changed.emit(slug)
+
+    # ------------------------------------------------------------------- history
+    def list_runs(self, slug: str, limit: int = 100) -> tuple[Run, ...]:
+        return self.container.repository.list_runs(Slug(slug), limit=limit)
+
+    def run_logs(self, run_id: str) -> tuple[LogLine, ...]:
+        return self.container.repository.logs(RunId(run_id))
+
+    # -------------------------------------------------------------- blocking work
+    def run_blocking(
+        self,
+        function: Callable[[], T],
+        on_result: Callable[[T], None],
+        on_error: Callable[[BaseException], None] | None = None,
+    ) -> None:
+        """Run a blocking function (git, file scanning) off the GUI thread.
+
+        ``on_result`` / ``on_error`` run on the GUI thread; without ``on_error`` the failure
+        is shown as a message like any other engine error.
+        """
+        self._bridge.submit(
+            asyncio.to_thread(function), on_result=on_result, on_error=on_error or self.report_error
+        )
+
+    def report_error(self, error: BaseException) -> None:
+        """Show an exception as a message (expected errors without a traceback)."""
+        if isinstance(error, WorkbenchError):
+            hint = f"\n{error.hint}" if error.hint else ""
+            self.message.emit("error", f"{error.message}{hint}")
+        else:
+            _log.error("unexpected failure", exc_info=error)
+            self.message.emit("error", f"Unexpected error: {type(error).__name__}: {error}")
 
     # ------------------------------------------------------------------ shutdown
     def shutdown(self) -> None:
