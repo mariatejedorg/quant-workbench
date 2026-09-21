@@ -23,3 +23,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   dict/list/tuple edits element by element, verify every edit by reading it back, and keep a backup
   outside the project. Property-based tests run against the ten real config files.
 - CLI: `qw config get | diff | set`.
+- Doctor: checkers for the virtual environment, TLS certificate bundle, sibling-import
+  collisions, sibling references vs declared dependencies, git identity policy, repository
+  hygiene (uncommitted work, tracked venv, large files, committed secrets), generated-output
+  freshness, static analysis and an explainability score; opt-in determinism check. Findings
+  carry severity, location and, where safe, a previewable fix (`copy-ca-bundle`,
+  `setup-environment`, `set-git-identity`, `ignore-venv`).
+- Git adapter over the `git` CLI; it can only ever write the repository's own identity.
+- CLI: `qw doctor [--fix] [--json] [--only/--skip] [--deterministic] [--list]`.
+

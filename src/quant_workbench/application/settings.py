@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     #: Git identity policy enforced before any commit made through the workbench.
     expected_git_email: str = DEFAULT_GIT_EMAIL
     expected_git_name: str | None = None
+    #: SSH host alias the ``origin`` remote must use (it selects which account pushes).
+    expected_git_remote_host: str | None = "github.com-maria"
+    #: Tracked files larger than this are reported by the repository-hygiene checker.
+    max_tracked_file_mb: int = Field(default=5, ge=1)
 
     #: How many project runs may execute at the same time.
     max_concurrency: int = Field(default=3, ge=1, le=16)

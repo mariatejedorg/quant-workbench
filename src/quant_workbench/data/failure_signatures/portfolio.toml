@@ -46,7 +46,7 @@ id = "module-not-found"
 title = "A required package is not installed"
 pattern = 'ModuleNotFoundError: No module named'
 advice = "The project's virtual environment is missing a dependency. Run `qw env setup <project>` to install `requirements.txt`."
-fix = "install-requirements"
+fix = "setup-environment"
 
 [[signature]]
 id = "unicode-error"

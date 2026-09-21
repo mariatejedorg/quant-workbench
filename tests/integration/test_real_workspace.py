@@ -12,7 +12,11 @@ import pytest
 
 from quant_workbench.application.catalog import ProjectCatalog
 from quant_workbench.application.config import ConfigService
+from quant_workbench.application.settings import Settings
+from quant_workbench.bootstrap import build_container
+from quant_workbench.domain.diagnostics import Severity
 from quant_workbench.domain.graph import EdgeOrigin
+from quant_workbench.domain.paths import AppPaths
 from quant_workbench.infrastructure.config_editor import LibCstConfigEditor
 from quant_workbench.infrastructure.project_files import FileSystemProjectFiles
 from quant_workbench.infrastructure.resources import data_path
@@ -101,3 +105,31 @@ def test_a_real_edit_is_previewed_as_a_minimal_diff_without_touching_the_disk() 
         "+FORECAST_HORIZON_DAYS = 45",
     ]
     assert path.read_bytes() == before
+
+
+# ------------------------------------------------------------- M4: the doctor's gate
+async def test_the_doctor_finds_no_errors_in_the_real_portfolio(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Zero false positives at ERROR level; warnings limited to the documented ones.
+
+    The only warning tolerated is ``explainability-low``: it is a real observation (some
+    projects have public functions without a docstring), not a defect in the doctor.
+    """
+    container = build_container(
+        paths=AppPaths.under(tmp_path_factory.mktemp("app-home")),
+        settings=Settings(),
+        database=None,
+    )
+    catalog = container.catalog.load(REAL_WORKSPACE)
+
+    try:
+        report = await container.doctor.run(container.check_context(catalog))
+    finally:
+        container.close()
+
+    serious = [f for f in report.findings if f.severity is not Severity.INFO]
+    assert [f for f in serious if f.severity is Severity.ERROR] == []
+    assert {f.code for f in serious} <= {"explainability-low"}, serious
+    assert len(report.scores) == 10
+    assert all(0 <= score.score <= 100 for score in report.scores.values())

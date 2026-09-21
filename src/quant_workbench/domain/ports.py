@@ -14,6 +14,7 @@ from typing import Protocol, TypeVar, runtime_checkable
 
 from quant_workbench.domain.config import Constant
 from quant_workbench.domain.events import DomainEvent
+from quant_workbench.domain.git import GitState
 from quant_workbench.domain.ids import RunId, Slug
 from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
 from quant_workbench.domain.project import Project, ProjectSpec
@@ -122,6 +123,33 @@ class ProjectFiles(Protocol):
         """Size and SHA-256 of every declared output file that currently exists."""
         ...
 
+    def python_sources(self, project: Project) -> tuple[str, ...]:
+        """Relative paths (forward slashes) of the project's own ``.py`` files, sorted.
+
+        Virtual environments, caches and other vendored folders are excluded.
+        """
+        ...
+
+    def exists(self, project: Project, relative: str) -> bool:
+        """Whether ``relative`` is an existing file inside the project."""
+        ...
+
+    def modified_at(self, project: Project, relative: str) -> datetime | None:
+        """When ``relative`` was last modified (UTC), or ``None`` if it does not exist."""
+        ...
+
+    def size(self, project: Project, relative: str) -> int | None:
+        """The size in bytes of ``relative``, or ``None`` if it does not exist."""
+        ...
+
+    def read_bytes(self, project: Project, relative: str) -> bytes | None:
+        """The raw content of ``relative``, or ``None`` if it does not exist."""
+        ...
+
+    def write_bytes(self, project: Project, relative: str, data: bytes) -> None:
+        """Create or replace ``relative`` (parent folders included) with ``data``."""
+        ...
+
     def write_text(self, project: Project, relative: str, text: str) -> Path | None:
         """Replace ``relative`` with ``text`` atomically, byte for byte (no newline changes).
 
@@ -171,4 +199,36 @@ class RunRepository(Protocol):
 
     def close(self) -> None:
         """Release the underlying connections. The repository is unusable afterwards."""
+        ...
+
+
+class GitGateway(Protocol):
+    """Read access to a repository, plus the few writes the doctor's fixes need."""
+
+    def is_repository(self, root: Path) -> bool:
+        """Whether ``root`` is the top level of a git working tree."""
+        ...
+
+    def state(self, root: Path) -> GitState:
+        """Branch, uncommitted paths and ahead/behind counts."""
+        ...
+
+    def config_value(self, root: Path, key: str) -> str | None:
+        """The *effective* value of a config key in this repository (local, then global)."""
+        ...
+
+    def remote_url(self, root: Path, name: str = "origin") -> str | None:
+        """The URL of remote ``name``, or ``None`` if there is no such remote."""
+        ...
+
+    def tracked_files(self, root: Path) -> tuple[str, ...]:
+        """Every path tracked by the repository, relative to ``root``."""
+        ...
+
+    def is_ignored(self, root: Path, relative: str) -> bool:
+        """Whether ``relative`` is matched by the repository's ignore rules."""
+        ...
+
+    def set_local_config(self, root: Path, key: str, value: str) -> None:
+        """Set ``key`` in this repository's own config. Never touches the global config."""
         ...

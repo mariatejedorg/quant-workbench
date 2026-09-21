@@ -12,3 +12,4 @@ is a new record that supersedes the old one.
 | [0003](0003-libcst-for-config-editing.md) | Format-preserving config editing with libcst | Accepted |
 | [0004](0004-do-not-force-utf8-mode-in-child-processes.md) | Do not force Python's UTF-8 mode in child processes | Accepted |
 | [0005](0005-config-edits-are-planned-verified-and-byte-exact.md) | Config edits are planned, verified by read-back and byte-exact | Accepted |
+| [0006](0006-the-doctor-is-a-set-of-small-rules-with-previewable-fixes.md) | The doctor is a set of small rules with previewable fixes | Accepted |

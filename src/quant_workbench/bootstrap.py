@@ -12,23 +12,28 @@ commands that never run anything (``qw list``, ``qw graph``) do not open the dat
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 
-from quant_workbench.application.catalog import ProjectCatalog
+from quant_workbench.application.catalog import Catalog, ProjectCatalog
+from quant_workbench.application.checkers import default_checkers
 from quant_workbench.application.config import ConfigService
+from quant_workbench.application.diagnostics import CheckContext, DoctorService
 from quant_workbench.application.environments import EnvironmentService
+from quant_workbench.application.fixes import FixService
 from quant_workbench.application.jobs import JobExecutor
 from quant_workbench.application.runs import RunService
 from quant_workbench.application.settings import Settings, load_settings
 from quant_workbench.domain.failures import FailureSignature
 from quant_workbench.domain.paths import AppPaths
-from quant_workbench.domain.ports import Clock, EventBus, ProjectFiles, RunRepository
+from quant_workbench.domain.ports import Clock, EventBus, GitGateway, ProjectFiles, RunRepository
 from quant_workbench.infrastructure.clock import SystemClock
 from quant_workbench.infrastructure.config_editor import LibCstConfigEditor
 from quant_workbench.infrastructure.event_bus import InProcessEventBus
+from quant_workbench.infrastructure.git_cli import GitCli
 from quant_workbench.infrastructure.paths import default_app_paths
 from quant_workbench.infrastructure.process import AsyncSubprocessRunner
 from quant_workbench.infrastructure.project_files import (
@@ -65,6 +70,33 @@ class Container:
     @cached_property
     def config(self) -> ConfigService:
         return ConfigService(files=self.project_files, editor=LibCstConfigEditor())
+
+    @cached_property
+    def git(self) -> GitGateway:
+        return GitCli()
+
+    @cached_property
+    def doctor(self) -> DoctorService:
+        return DoctorService(default_checkers())
+
+    @cached_property
+    def fixes(self) -> FixService:
+        return FixService()
+
+    def check_context(self, catalog: Catalog, *, with_runs: bool = False) -> CheckContext:
+        """Everything the doctor's checkers and fixes need, for one look at ``catalog``.
+
+        ``with_runs`` also wires the run engine, which only the opt-in determinism check uses.
+        """
+        return CheckContext(
+            catalog=catalog,
+            settings=self.settings,
+            files=self.project_files,
+            git=self.git,
+            environments=self.environments,
+            runs=self.runs if with_runs else None,
+            environ=dict(os.environ),
+        )
 
     @cached_property
     def repository(self) -> RunRepository:

@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from quant_workbench.domain.errors import EnvironmentSetupError
+from quant_workbench.domain.git import GitState
 from quant_workbench.domain.ids import RunId, Slug, parse_slug
 from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
 from quant_workbench.domain.project import (
@@ -177,3 +179,91 @@ class FixedInterpreter:
                 hint=f"Create it with `qw env setup {project.slug}`.",
             )
         return self._python
+
+
+class MultiFiles:
+    """ProjectFiles for several projects at once: ``{slug: {relative path: text or bytes}}``."""
+
+    def __init__(self, files: dict[str, dict[str, str | bytes]] | None = None) -> None:
+        self.files: dict[str, dict[str, str | bytes]] = files or {}
+        self.mtimes: dict[tuple[str, str], datetime] = {}
+        self.writes: list[tuple[str, str, str | bytes]] = []
+
+    def _of(self, project: Project) -> dict[str, str | bytes]:
+        return self.files.setdefault(project.slug, {})
+
+    def read_text(self, project: Project, relative: str) -> str | None:
+        value = self._of(project).get(relative)
+        return value.decode("utf-8") if isinstance(value, bytes) else value
+
+    def read_bytes(self, project: Project, relative: str) -> bytes | None:
+        value = self._of(project).get(relative)
+        return value.encode("utf-8") if isinstance(value, str) else value
+
+    def write_text(self, project: Project, relative: str, text: str) -> Path | None:
+        self.writes.append((project.slug, relative, text))
+        self._of(project)[relative] = text
+        return None
+
+    def write_bytes(self, project: Project, relative: str, data: bytes) -> None:
+        self.writes.append((project.slug, relative, data))
+        self._of(project)[relative] = data
+
+    def exists(self, project: Project, relative: str) -> bool:
+        return relative in self._of(project)
+
+    def size(self, project: Project, relative: str) -> int | None:
+        data = self.read_bytes(project, relative)
+        return None if data is None else len(data)
+
+    def python_sources(self, project: Project) -> tuple[str, ...]:
+        return tuple(sorted(name for name in self._of(project) if name.endswith(".py")))
+
+    def modified_at(self, project: Project, relative: str) -> datetime | None:
+        if relative not in self._of(project):
+            return None
+        return self.mtimes.get((project.slug, relative), datetime(2026, 1, 1, tzinfo=UTC))
+
+    def snapshot_outputs(self, project: Project) -> tuple[OutputFileState, ...]:
+        return ()
+
+
+@dataclass
+class FakeRepo:
+    """What a fake git repository answers."""
+
+    config: dict[str, str] = field(default_factory=dict)
+    remote: str | None = None
+    state: GitState = field(default_factory=lambda: GitState("main", ()))
+    tracked: tuple[str, ...] = ()
+    ignored: frozenset[str] = frozenset()
+
+
+class FakeGit:
+    """GitGateway over in-memory repositories keyed by root folder."""
+
+    def __init__(self) -> None:
+        self.repos: dict[Path, FakeRepo] = {}
+        self.local_writes: list[tuple[Path, str, str]] = []
+
+    def is_repository(self, root: Path) -> bool:
+        return root in self.repos
+
+    def state(self, root: Path) -> GitState:
+        return self.repos[root].state
+
+    def config_value(self, root: Path, key: str) -> str | None:
+        return self.repos[root].config.get(key)
+
+    def remote_url(self, root: Path, name: str = "origin") -> str | None:
+        return self.repos[root].remote
+
+    def tracked_files(self, root: Path) -> tuple[str, ...]:
+        return self.repos[root].tracked
+
+    def is_ignored(self, root: Path, relative: str) -> bool:
+        return relative in self.repos[root].ignored
+
+    def set_local_config(self, root: Path, key: str, value: str) -> None:
+        self.local_writes.append((root, key, value))
+        self.repos[root].config[key] = value

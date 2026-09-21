@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 from quant_workbench.domain.errors import EnvironmentSetupError, UnsafeEditError
@@ -12,6 +13,11 @@ from quant_workbench.domain.project import Project
 from quant_workbench.domain.runs import OutputFileState
 
 _CHUNK = 1024 * 1024
+
+#: Folders that never hold the project's own source: environments, caches, tool output.
+_NOT_SOURCE = frozenset(
+    {"venv", ".venv", "env", "__pycache__", "node_modules", "build", "dist", "site-packages"}
+)
 
 
 class FileSystemProjectFiles:
@@ -54,6 +60,52 @@ class FileSystemProjectFiles:
         finally:
             temporary.unlink(missing_ok=True)
         return backup
+
+    def python_sources(self, project: Project) -> tuple[str, ...]:
+        root = project.root
+        found: list[str] = []
+        stack = [root]
+        while stack:
+            current = stack.pop()
+            try:
+                entries = list(current.iterdir())
+            except OSError:
+                continue
+            for entry in entries:
+                if entry.is_dir():
+                    hidden = entry.name.startswith(".")
+                    if not hidden and entry.name not in _NOT_SOURCE and entry != project.venv_dir:
+                        stack.append(entry)
+                elif entry.suffix == ".py":
+                    found.append(entry.relative_to(root).as_posix())
+        return tuple(sorted(found))
+
+    def exists(self, project: Project, relative: str) -> bool:
+        path = self._inside(project, relative)
+        return path is not None and path.is_file()
+
+    def modified_at(self, project: Project, relative: str) -> datetime | None:
+        path = self._inside(project, relative)
+        if path is None or not path.is_file():
+            return None
+        return datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
+
+    def size(self, project: Project, relative: str) -> int | None:
+        path = self._inside(project, relative)
+        return path.stat().st_size if path is not None and path.is_file() else None
+
+    def read_bytes(self, project: Project, relative: str) -> bytes | None:
+        path = self._inside(project, relative)
+        if path is None or not path.is_file():
+            return None
+        return path.read_bytes()
+
+    def write_bytes(self, project: Project, relative: str, data: bytes) -> None:
+        path = self._inside(project, relative)
+        if path is None:
+            raise UnsafeEditError(f"{relative} is outside {project.title}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
     def _backup(self, project: Project, path: Path, relative: str) -> Path | None:
         if self._backups is None or self._clock is None or not path.is_file():

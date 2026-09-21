@@ -99,7 +99,7 @@ def test_ssl_errors_are_not_confused_with_network_timeouts() -> None:
 
 def test_ssl_signature_offers_the_ca_bundle_fix() -> None:
     assert BY_ID["ssl-certificate-verify"].fix == "copy-ca-bundle"
-    assert BY_ID["module-not-found"].fix == "install-requirements"
+    assert BY_ID["module-not-found"].fix == "setup-environment"
 
 
 # ----------------------------------------------------------------------- loader
