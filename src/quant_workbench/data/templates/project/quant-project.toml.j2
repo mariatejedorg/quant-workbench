@@ -1,0 +1,30 @@
+schema_version = 1
+slug = "{{ slug }}"
+title = "{{ title }}"
+category = "{{ category }}"
+order = {{ order }}
+description = "{{ description }}"
+tags = ["monte-carlo"]
+
+[outputs]
+dashboard = "outputs/dashboard.html"
+
+[[config_targets]]
+file = "config/{{ module }}.py"
+symbols = []
+
+# What the run prints, so the workbench can chart it over time (see `qw doctor`, History tab).
+[[metrics]]
+name = "expected_price"
+pattern = 'Expected final price:\s*(-?[\d.]+)'
+kind = "float"
+
+[[metrics]]
+name = "sharpe"
+pattern = 'Sharpe ratio \(median path\):\s*(-?[\d.]+)'
+kind = "float"
+
+[[metrics]]
+name = "max_drawdown"
+pattern = 'Maximum drawdown \(median path\):\s*(-?[\d.]+)%'
+kind = "percent"

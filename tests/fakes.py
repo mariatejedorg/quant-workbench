@@ -264,6 +264,9 @@ class FakeGit:
     def is_ignored(self, root: Path, relative: str) -> bool:
         return relative in self.repos[root].ignored
 
+    def clone(self, url: str, destination: Path) -> None:
+        raise NotImplementedError("the fake never clones")
+
     def set_local_config(self, root: Path, key: str, value: str) -> None:
         self.local_writes.append((root, key, value))
         self.repos[root].config[key] = value

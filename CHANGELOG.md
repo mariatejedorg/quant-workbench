@@ -45,4 +45,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   (status, diff, log, guarded commit, no push), and fixes from the Problems panel with a preview.
 - Run comparison, metric series, graph layout and a guarded git commit use case as tested Qt-free code.
 - Fixed: subprocess transports are closed explicitly after a kill or timeout.
+- Study mode: the README sections "Concepts to be able to explain in an interview", "Key findings" and
+  "Results" become flash cards scheduled with SM-2 (`qw study`, Study tab); progress is stored in SQLite.
+- Doctor: `readme-claims` compares the numbers in a README's Results table with the last run's metrics.
+- `qw new <slug>`: generates a project that follows the portfolio's conventions (commented config
+  module, simulation, self-contained dashboard, README with the standard sections, manifest with metric
+  extractors, TLS bundle inherited from a sibling) and checks it with the doctor.
+- `qw sync`: clones the registry's repositories over HTTPS into their local folder names; never touches an
+  existing folder; `--setup` builds the environments, `--dry-run` only shows the plan.
+- `qw watch <slug>`: re-runs a project whenever a Python file in `src/` or its config folders is saved.
+- ADR 0009 records the rules these three commands follow (only add, never overwrite, ignore generated files).
 

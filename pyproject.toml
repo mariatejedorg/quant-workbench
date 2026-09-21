@@ -91,7 +91,7 @@ line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
 # Real project files kept as golden inputs: they must stay byte-for-byte as the author wrote them
-extend-exclude = ["tests/fixtures"]
+extend-exclude = ["tests/fixtures", "src/quant_workbench/data/templates"]
 
 [tool.ruff.lint]
 select = [

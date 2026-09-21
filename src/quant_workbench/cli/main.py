@@ -19,7 +19,10 @@ from quant_workbench.cli import (
     config_commands,
     doctor_commands,
     run_commands,
+    scaffold_commands,
     study_commands,
+    sync_commands,
+    watch_commands,
 )
 from quant_workbench.cli.common import configure_stdio, get_container, handled
 from quant_workbench.domain.errors import WorkbenchError
@@ -37,6 +40,9 @@ run_commands.register(app)
 config_commands.register(app)
 doctor_commands.register(app)
 study_commands.register(app)
+scaffold_commands.register(app)
+sync_commands.register(app)
+watch_commands.register(app)
 
 
 def _version_callback(value: bool) -> None:

@@ -8,6 +8,7 @@ from anything and test doubles are trivial to write.
 from __future__ import annotations
 
 from collections.abc import Callable, Collection, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol, TypeVar, runtime_checkable
@@ -177,6 +178,40 @@ class ConfigEditor(Protocol):
         ...
 
 
+class ProjectTemplates(Protocol):
+    """Produces the files of a new project from the workbench's template."""
+
+    def render(self, context: Mapping[str, str | int]) -> dict[str, str]:
+        """``{relative path: file text}`` for every file of a new project.
+
+        ``context`` names the project (``slug``, ``title``, ``module``, ``folder``,
+        ``category``, ``description``, ``order``).
+        """
+        ...
+
+
+class ChangeStream(Protocol):
+    """What ``ChangeSource.watching`` hands out: files changing, in quiet-separated batches."""
+
+    async def next_batch(self) -> frozenset[Path]:
+        """Wait for a change, then for the edits to settle; return every file touched."""
+        ...
+
+
+class ChangeSource(Protocol):
+    """Watches folders for file changes (the adapter uses the operating system's events)."""
+
+    def watching(
+        self, directories: Sequence[Path], accept: Callable[[Path], bool]
+    ) -> AbstractAsyncContextManager[ChangeStream]:
+        """Start watching; changes to paths ``accept`` rejects are never reported.
+
+        Watching begins on entering the ``async with`` (not on the first ``next_batch``), so
+        edits made while the caller is busy are kept and come out in the next batch.
+        """
+        ...
+
+
 class RunRepository(Protocol):
     """Persistence of runs and their logs."""
 
@@ -232,6 +267,10 @@ class GitGateway(Protocol):
 
     def set_local_config(self, root: Path, key: str, value: str) -> None:
         """Set ``key`` in this repository's own config. Never touches the global config."""
+        ...
+
+    def clone(self, url: str, destination: Path) -> None:
+        """Clone ``url`` into ``destination``, which must not exist yet (or be empty)."""
         ...
 
     def log(self, root: Path, limit: int = 20) -> tuple[CommitInfo, ...]:

@@ -1,0 +1,58 @@
+# {{ title }}
+
+{{ description }}
+
+## What it does
+
+Simulates a few hundred price paths with geometric Brownian motion (standard library only),
+summarises them with the numbers a quant looks at first (expected final price, Sharpe ratio and
+maximum drawdown of the median path) and writes a self-contained HTML dashboard.
+
+This project was created with the Quant Workbench (`qw new`); it follows the conventions of the
+portfolio: parameters in `config/`, one module per concern in `src/`, results in `outputs/`.
+
+## Project structure
+
+```
+{{ folder }}/
+├── config/{{ module }}.py    # every parameter, each with a comment explaining it
+├── src/
+│   ├── main.py            # entry point
+│   ├── simulate.py        # geometric Brownian motion and the summary statistics
+│   └── dashboard.py       # self-contained HTML dashboard
+├── outputs/               # generated: dashboard.html, metrics.json
+├── quant-project.toml     # manifest read by the Quant Workbench
+└── requirements.txt
+```
+
+## How to run it
+
+```bash
+python -m venv venv
+venv/Scripts/activate      # Windows; on macOS/Linux: source venv/bin/activate
+python src/main.py
+```
+
+Or from the workbench: `qw run {{ slug }}`.
+
+## Results
+
+_Run the project to fill this table with your own numbers._
+
+| | Value |
+|---|---|
+| Expected final price | |
+| Sharpe ratio (median path) | |
+| Maximum drawdown (median path) | |
+
+## Key findings
+
+_Write what the run shows once you have looked at the dashboard._
+
+## Concepts to be able to explain in an interview
+
+- **Geometric Brownian motion**: prices change by a random *multiplicative* factor, so they stay positive and returns (not price changes) are what is normally distributed; it is the model behind Black-Scholes.
+- **The Ito correction (`- sigma^2 / 2`)**: in a multiplicative process a +10 % and a -10 % move do not cancel out (1.1 x 0.9 = 0.99), so the drift of the log-price is smaller than the drift of the price; without the term the simulated average would grow faster than the chosen `mu`.
+- **Why the seed matters**: a fixed seed makes the simulation reproducible, so a number in this README can be regenerated exactly; changing `N_PATHS` changes the estimate's noise, not its expected value.
+- **What the Sharpe ratio measures and how it is annualised**: mean excess return per unit of volatility; the mean scales with time and the standard deviation with its square root, hence the factor `sqrt(252)`.
+- **What maximum drawdown captures that volatility does not**: the worst peak-to-trough loss an investor would have lived through, which depends on the *order* of returns, not only on their spread.

@@ -118,5 +118,5 @@ snapshot and the output manifest are stored as JSON on the run row.
 ## Data shipped with the package
 
 `src/quant_workbench/data/` holds the registry of portfolio manifests, the failure-signature
-knowledge base (TOML) and, later, the project templates. They are package data, resolved
+knowledge base (TOML) and the project template used by `qw new`. They are package data, resolved
 with `importlib.resources`, so an installed wheel and an editable checkout behave alike.

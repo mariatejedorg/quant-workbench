@@ -49,6 +49,7 @@ class FileSystemProjectFiles:
         if path is None:
             raise UnsafeEditError(f"{relative} is outside {project.title}")
         backup = self._backup(project, path, relative)
+        path.parent.mkdir(parents=True, exist_ok=True)  # new files may need new folders
         # Write next to the target and swap: a crash mid-write can never leave the project
         # with a half-written config file. ``Path.replace`` is atomic on the same volume.
         temporary = path.with_name(f".{path.name}.qw-tmp")

@@ -29,8 +29,11 @@ from quant_workbench.application.fixes import FixService
 from quant_workbench.application.git_service import GitService
 from quant_workbench.application.jobs import JobExecutor
 from quant_workbench.application.runs import RunService
+from quant_workbench.application.scaffold import ScaffoldService
 from quant_workbench.application.settings import Settings, load_settings
 from quant_workbench.application.study import StudyService
+from quant_workbench.application.sync import SyncService
+from quant_workbench.application.watch import WatchService
 from quant_workbench.domain.failures import FailureSignature
 from quant_workbench.domain.paths import AppPaths
 from quant_workbench.domain.ports import (
@@ -55,6 +58,8 @@ from quant_workbench.infrastructure.resources import data_path
 from quant_workbench.infrastructure.signatures import load_signatures
 from quant_workbench.infrastructure.sqlite_runs import SqliteRunRepository, create_sqlite_engine
 from quant_workbench.infrastructure.sqlite_study import SqliteStudyRepository
+from quant_workbench.infrastructure.templates import JinjaProjectTemplates
+from quant_workbench.infrastructure.watcher import WatchdogChangeSource
 from quant_workbench.infrastructure.workspace import FileSystemWorkspace
 
 
@@ -114,6 +119,21 @@ class Container:
             environ=dict(os.environ),
             repository=self.repository,
         )
+
+    @cached_property
+    def scaffold(self) -> ScaffoldService:
+        return ScaffoldService(
+            files=self.project_files,
+            templates=JinjaProjectTemplates(data_path("templates") / "project"),
+        )
+
+    @cached_property
+    def sync(self) -> SyncService:
+        return SyncService(self.git)
+
+    @cached_property
+    def watch(self) -> WatchService:
+        return WatchService(runs=self.runs, source=WatchdogChangeSource())
 
     @cached_property
     def engine(self) -> Engine:

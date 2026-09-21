@@ -57,7 +57,7 @@ def _print_finding(finding: Finding) -> None:
         console.print(f"    [dim]{finding.detail}[/]", highlight=False)
 
 
-def _print_report(report: DoctorReport, catalog: Catalog, minimum: Severity) -> None:
+def print_report(report: DoctorReport, catalog: Catalog, minimum: Severity) -> None:
     shown = report.at_least(minimum)
     workspace_level = [f for f in shown if f.project is None]
     if workspace_level:
@@ -203,14 +203,14 @@ def doctor(
     if as_json and not fix:
         typer.echo(_report_json(report))
     else:
-        _print_report(report, catalog, min_severity)
+        print_report(report, catalog, min_severity)
 
     if fix:
         applied = asyncio.run(_fix_all(container, context, report, assume_yes=yes))
         if applied:
             console.print("\n[bold]Re-checking after the fixes[/]")
             report, _ = asyncio.run(diagnose())
-            _print_report(report, catalog, min_severity)
+            print_report(report, catalog, min_severity)
         elif not any(container.fixes.can_fix(f) for f in report.findings):
             console.print("[dim]Nothing here has an automatic fix.[/]")
     if not report.ok:

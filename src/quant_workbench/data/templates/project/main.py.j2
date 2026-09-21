@@ -1,0 +1,76 @@
+"""Entry point of {{ title }}: simulate, print the summary, write the dashboard.
+
+Run it with the project's own interpreter: ``python src/main.py``.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+# Make the project's own folder importable (so ``config`` resolves to *this* project's config).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from config.{{ module }} import (  # noqa: E402
+    DRIFT,
+    INITIAL_PRICE,
+    N_PATHS,
+    N_STEPS,
+    RISK_FREE_RATE,
+    SEED,
+    TRADING_DAYS_PER_YEAR,
+    VOLATILITY,
+)
+from dashboard import build_dashboard  # noqa: E402
+from simulate import (  # noqa: E402
+    daily_returns,
+    max_drawdown,
+    percentile,
+    sharpe_ratio,
+    simulate_paths,
+)
+
+OUTPUTS = Path(__file__).resolve().parent.parent / "outputs"
+
+
+def main() -> None:
+    """Run the whole pipeline once."""
+    paths = simulate_paths(
+        initial_price=INITIAL_PRICE,
+        drift=DRIFT,
+        volatility=VOLATILITY,
+        n_steps=N_STEPS,
+        n_paths=N_PATHS,
+        seed=SEED,
+        trading_days=TRADING_DAYS_PER_YEAR,
+    )
+    finals = [path[-1] for path in paths]
+    # The median path is the one whose final price is the median of all final prices.
+    median_final = percentile(finals, 0.5)
+    median_path = min(paths, key=lambda path: abs(path[-1] - median_final))
+
+    expected = sum(finals) / len(finals)
+    sharpe = sharpe_ratio(daily_returns(median_path), RISK_FREE_RATE, TRADING_DAYS_PER_YEAR)
+    drawdown = max_drawdown(median_path)
+
+    print("{{ title }}")
+    print(f"Paths simulated: {len(paths)}")
+    print(f"Expected final price: {expected:.2f}")
+    print(f"Median final price: {median_final:.2f}")
+    print(f"Sharpe ratio (median path): {sharpe:.2f}")
+    print(f"Maximum drawdown (median path): {drawdown * 100:.1f}%")
+
+    OUTPUTS.mkdir(exist_ok=True)
+    metrics = {"expected_price": expected, "sharpe": sharpe, "max_drawdown_pct": drawdown * 100}
+    (OUTPUTS / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    kpis = [
+        ("Expected final price", f"{expected:.2f}"),
+        ("Sharpe ratio (median path)", f"{sharpe:.2f}"),
+        ("Maximum drawdown (median path)", f"{drawdown * 100:.1f}%"),
+    ]
+    page = build_dashboard(title="{{ title }}", paths=paths, median_path=median_path, kpis=kpis)
+    (OUTPUTS / "dashboard.html").write_text(page, encoding="utf-8")
+    print("Dashboard written to outputs/dashboard.html")
+
+
+if __name__ == "__main__":
+    main()

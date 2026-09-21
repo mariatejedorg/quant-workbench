@@ -25,6 +25,8 @@ from quant_workbench.domain.errors import GitError
 from quant_workbench.domain.git import CommitInfo, GitState
 
 _TIMEOUT_SECONDS = 30
+#: A clone downloads a whole repository, so it gets far longer than a status query.
+_CLONE_TIMEOUT_SECONDS = 300
 #: The only keys ``set_local_config`` accepts.
 _WRITABLE_KEYS = frozenset({"user.email", "user.name"})
 #: Fields per record of the ``git log`` format used by :meth:`GitCli.log`.
@@ -99,6 +101,21 @@ class GitCli:
             raise GitError(f"Refusing to set git config key {key!r}", hint="Only identity keys.")
         self._run(root, "config", "--local", key, value)
 
+    def clone(self, url: str, destination: Path) -> None:
+        if destination.exists() and any(destination.iterdir()):
+            raise GitError(f"{destination} already exists and is not empty")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        # ``--`` ends the options, so a URL that starts with a dash can never be read as a flag.
+        self._run(
+            destination.parent,
+            "clone",
+            "--quiet",
+            "--",
+            url,
+            destination.name,
+            timeout=_CLONE_TIMEOUT_SECONDS,
+        )
+
     def commit(self, root: Path, message: str, paths: Sequence[str]) -> str:
         """Stage and commit. Hooks run (never ``--no-verify``); nothing is ever pushed."""
         if not message.strip():
@@ -136,7 +153,9 @@ class GitCli:
         return result.stdout if result.returncode == 0 else ""
 
     # --------------------------------------------------------------- internals
-    def _run(self, root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self, root: Path, *args: str, check: bool = True, timeout: int = _TIMEOUT_SECONDS
+    ) -> subprocess.CompletedProcess[str]:
         environment = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C"}
         command = [self._executable, "-C", str(root), "-c", "core.quotepath=off", *args]
         try:
@@ -146,7 +165,7 @@ class GitCli:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=_TIMEOUT_SECONDS,
+                timeout=timeout,
                 env=environment,
                 creationflags=_NO_WINDOW,
                 check=False,
@@ -156,7 +175,7 @@ class GitCli:
                 "git is not installed or not on PATH", hint="Install git and restart."
             ) from error
         except subprocess.TimeoutExpired as error:
-            raise GitError(f"git {args[0]} timed out after {_TIMEOUT_SECONDS}s") from error
+            raise GitError(f"git {args[0]} timed out after {timeout}s") from error
         if check and result.returncode != 0:
             raise GitError(
                 f"git {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}"

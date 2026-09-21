@@ -1,0 +1,31 @@
+"""Parameters of {{ title }}.
+
+Everything a person may want to change without touching the logic lives here, each with a
+comment saying what it does. The Quant Workbench reads these comments to build its
+configuration form, so keep one comment block above every constant.
+"""
+
+# Seed of the random number generator: the same seed gives the same simulation on every run,
+# which is what makes the results reproducible (and defensible).
+SEED = 42
+
+# Price at the start of every simulated path.
+INITIAL_PRICE = 100.0
+
+# Expected annual return of the asset (0.08 = 8 % a year).
+DRIFT = 0.08
+
+# Annual volatility: the standard deviation of yearly returns (0.20 = 20 %).
+VOLATILITY = 0.20
+
+# Number of trading days simulated (252 is one market year).
+N_STEPS = 252
+
+# Number of independent price paths. More paths give a smoother estimate and a slower run.
+N_PATHS = 500
+
+# Trading days in a year, used to turn annual figures into daily ones and back.
+TRADING_DAYS_PER_YEAR = 252
+
+# Annual risk-free rate used by the Sharpe ratio.
+RISK_FREE_RATE = 0.0
