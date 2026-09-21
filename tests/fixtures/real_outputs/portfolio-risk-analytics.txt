@@ -1,0 +1,36 @@
+
+=== Composición de la cartera ===
+ ticker          nombre  peso
+ SAN.MC Banco Santander 0.125
+ ITX.MC         Inditex 0.125
+ IBE.MC       Iberdrola 0.125
+ REP.MC          Repsol 0.125
+ASML.AS            ASML 0.125
+ SAP.DE             SAP 0.125
+  MC.PA            LVMH 0.125
+ AIR.PA          Airbus 0.125
+
+Suma de pesos por activo: 100.00%
+
+=== Exposición por sector ===
+            sector  peso
+ Consumer Cyclical 0.250
+        Technology 0.250
+            Energy 0.125
+Financial Services 0.125
+       Industrials 0.125
+         Utilities 0.125
+Suma de pesos por sector: 100.00%
+
+=== Métricas de riesgo ===
+beta: 0.8057
+var_historico: 0.0153
+var_parametrico: 0.0151
+sharpe_cartera: 1.6275
+sharpe_benchmark: 1.8161
+rentabilidad_anual_cartera: 0.2524
+rentabilidad_anual_benchmark: 0.2762
+volatilidad_anual_cartera: 0.1551
+
+Dashboard interactivo generado en: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-5-portfolio-risk-analytics\outputs\dashboard.html
+Presentación generada en: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-5-portfolio-risk-analytics\outputs\presentacion_portfolio_risk.pptx

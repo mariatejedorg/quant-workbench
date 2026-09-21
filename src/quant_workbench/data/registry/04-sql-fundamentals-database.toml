@@ -17,3 +17,10 @@ artifacts = ["db/fundamentales.db"]
 [[config_targets]]
 file = "src/data.py"
 symbols = ["COMPANIES", "PRICE_HISTORY_PERIOD"]
+
+[[metrics]]
+name = "repsol_per"
+pattern = '^\s*Energy\s+Repsol\s+REP\.MC\s+([\d.]+)\s*$'
+kind = "float"
+unit = ""
+pick = "first"

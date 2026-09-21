@@ -1,0 +1,19 @@
+=== Datos descargados ===
+Universo invertible: 8 activos | Observaciones: 764
+
+=== Carteras de referencia (retorno / volatilidad / Sharpe, anualizados) ===
+Mínima varianza:  +19.94% / 11.62% / 1.33
+Máximo Sharpe:    +31.57% / 13.97% / 1.94
+Igual-ponderada:  +20.04% / 15.54% / 1.00
+
+=== Composición de la cartera de máximo Sharpe ===
+Inditex: 5.8%
+Iberdrola: 43.7%
+SAP: 22.6%
+LVMH: 27.9%
+
+=== Benchmarks (no invertibles, solo referencia) ===
+IBEX 35: retorno +18.94% / volatilidad 14.77%
+S&P 500: retorno +23.68% / volatilidad 15.21%
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-9-markowitz-frontera-eficiente\outputs\dashboard.html)

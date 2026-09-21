@@ -1,0 +1,75 @@
+# Failure signatures: what a failed run's output looks like, what it means, what to do.
+#
+# Patterns are regular expressions searched (multi-line) in the run's combined output.
+# They are written as TOML *literal* strings ('...') so backslashes need no escaping.
+# `transient = true` means a retry may well succeed (network hiccups, rate limits);
+# `fix` names an automatic remedy the doctor can offer.
+
+[[signature]]
+id = "ssl-certificate-verify"
+title = "HTTPS certificate verification failed"
+pattern = 'CERTIFICATE_VERIFY_FAILED|certificate verify failed|curl: \(60\)|unable to get local issuer certificate'
+advice = """An antivirus or proxy (Norton, corporate proxies...) is inspecting HTTPS traffic with its own \
+certificate, which Python does not trust. Copy the CA bundle to `.certs/cacert.pem` inside the project: \
+the data-download module uses it automatically when present."""
+fix = "copy-ca-bundle"
+
+[[signature]]
+id = "yfinance-rate-limit"
+title = "Yahoo Finance rate limit"
+pattern = 'YFRateLimitError|Too Many Requests|429 Client Error|Rate limited'
+advice = "Yahoo Finance is throttling requests. Wait a few minutes; the workbench retries automatically with backoff."
+transient = true
+
+[[signature]]
+id = "network-timeout"
+title = "Network error while downloading data"
+pattern = 'ReadTimeout|ConnectTimeout|ConnectionResetError|Connection reset by peer|Connection aborted|Max retries exceeded|Temporary failure in name resolution|curl: \((?:6|7|28|35|52|56)\)'
+advice = "A temporary network problem interrupted a download. Check the connection and re-run."
+transient = true
+
+[[signature]]
+id = "tls-setup-failed"
+title = "TLS setup failed while fetching market data"
+pattern = 'Cookie/crumb fetch failed \(SSLError\)'
+advice = """The HTTPS client could not even start a secure connection, so Yahoo Finance returned nothing (the later "possibly delisted" message is a symptom, not the cause). Two known causes: (1) an antivirus/proxy is inspecting HTTPS: put its CA bundle in `.certs/cacert.pem`; (2) the process runs in Python UTF-8 mode (PYTHONUTF8=1) while the project path contains non-ASCII characters (e.g. `Quant - María`), so libcurl cannot open the CA bundle: unset PYTHONUTF8 or move the workspace to an ASCII-only path."""
+
+[[signature]]
+id = "yfinance-no-data"
+title = "No market data returned for a ticker"
+pattern = 'possibly delisted|No data found|YFPricesMissingError|YFTzMissingError|No price data found'
+advice = """Yahoo Finance returned nothing for a symbol: it may be delisted, mistyped in the config, or the request was \
+blocked. Check the ticker in the project's configuration."""
+
+[[signature]]
+id = "module-not-found"
+title = "A required package is not installed"
+pattern = 'ModuleNotFoundError: No module named'
+advice = "The project's virtual environment is missing a dependency. Run `qw env setup <project>` to install `requirements.txt`."
+fix = "install-requirements"
+
+[[signature]]
+id = "unicode-error"
+title = "Text encoding error"
+pattern = 'UnicodeEncodeError|UnicodeDecodeError'
+advice = """A character could not be encoded or decoded. The workbench forces UTF-8 (PYTHONUTF8=1), so this points to code that \
+opens a file without `encoding="utf-8"`."""
+
+[[signature]]
+id = "calendar-mismatch"
+title = "Date alignment failed between series with different trading calendars"
+pattern = 'KeyError: .{0,3}\[Timestamp\('
+advice = """Series from different exchanges (e.g. NYSE and European markets) do not share holidays, so selecting one \
+series with the other's dates fails. Align them first with `reindex(...)` (and decide how to fill the gaps)."""
+
+[[signature]]
+id = "matplotlib-display"
+title = "Matplotlib tried to open a window"
+pattern = 'TclError|no display name|cannot connect to X server|Qt platform plugin'
+advice = "The code forces an interactive matplotlib backend. Workbench runs are headless (MPLBACKEND=Agg); remove `plt.show()` or the explicit `matplotlib.use(...)`."
+
+[[signature]]
+id = "output-file-locked"
+title = "An output file is locked by another program"
+pattern = 'PermissionError: \[Errno 13\]'
+advice = "A file the project wants to overwrite (often the .pptx or an image) is open in another program. Close it and re-run."

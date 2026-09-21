@@ -17,3 +17,27 @@ artifacts = []
 [[config_targets]]
 file = "config/garch.py"
 symbols = []
+
+[[metrics]]
+name = "persistence"
+pattern = 'Persistencia \(alpha\+beta\):\s*([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "hist_vol"
+pattern = 'Hist.rica \(rolling 30d, anualizada\):\s*([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "garch_vol"
+pattern = 'GARCH pronosticada \(anualizada\):\s*([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "implied_vol"
+pattern = 'Impl.cita de mercado \(ATM.*\):\s*([\d.]+)%'
+kind = "percent"
+unit = "%"

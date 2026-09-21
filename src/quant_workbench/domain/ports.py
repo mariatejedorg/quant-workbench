@@ -7,13 +7,16 @@ from anything and test doubles are trivial to write.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol, TypeVar, runtime_checkable
 
 from quant_workbench.domain.events import DomainEvent
-from quant_workbench.domain.project import ProjectSpec
+from quant_workbench.domain.ids import RunId, Slug
+from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
+from quant_workbench.domain.project import Project, ProjectSpec
+from quant_workbench.domain.runs import LogLine, LogStream, OutputFileState, Run
 
 E = TypeVar("E", bound=DomainEvent)
 
@@ -67,4 +70,79 @@ class WorkspaceGateway(Protocol):
 
     def sibling_references(self, directory: Path, known_folders: frozenset[str]) -> frozenset[str]:
         """Folder names from ``known_folders`` that ``directory``'s source code refers to."""
+        ...
+
+
+class ProcessRunner(Protocol):
+    """Runs one OS process to completion, streaming its output."""
+
+    async def run(
+        self,
+        spec: ProcessSpec,
+        *,
+        on_line: Callable[[LogStream, str], None],
+        on_sample: Callable[[ResourceSample], None] | None = None,
+        timeout_seconds: float | None = None,
+    ) -> ProcessOutcome:
+        """Execute ``spec`` and return how it ended.
+
+        Every output line is delivered to ``on_line`` as soon as it is produced. If the
+        awaiting task is cancelled, or ``timeout_seconds`` elapses, the **whole process
+        tree** is terminated before returning (or re-raising ``CancelledError``): no
+        orphaned child processes may survive.
+        """
+        ...
+
+
+class InterpreterResolver(Protocol):
+    """Finds the Python interpreter a project must run with."""
+
+    def find(self, project: Project) -> Path | None:
+        """The interpreter of the project's own environment, or ``None`` if it has none."""
+        ...
+
+    def resolve(self, project: Project) -> Path:
+        """The interpreter of the project's own environment.
+
+        Raises :class:`~quant_workbench.domain.errors.EnvironmentSetupError` when the
+        environment does not exist, with a hint on how to create it.
+        """
+        ...
+
+
+class ProjectFiles(Protocol):
+    """Read access to files inside a project."""
+
+    def read_text(self, project: Project, relative: str) -> str | None:
+        """The text of ``relative`` inside ``project``, or ``None`` if it does not exist."""
+        ...
+
+    def snapshot_outputs(self, project: Project) -> tuple[OutputFileState, ...]:
+        """Size and SHA-256 of every declared output file that currently exists."""
+        ...
+
+
+class RunRepository(Protocol):
+    """Persistence of runs and their logs."""
+
+    def save(self, run: Run) -> None:
+        """Insert ``run`` or replace the stored one with the same id."""
+        ...
+
+    def get(self, run_id: RunId) -> Run | None: ...
+
+    def list_runs(self, project: Slug | None = None, *, limit: int = 50) -> tuple[Run, ...]:
+        """Most recent first."""
+        ...
+
+    def latest(self, project: Slug) -> Run | None: ...
+
+    def append_logs(self, run_id: RunId, lines: Sequence[LogLine]) -> None: ...
+
+    def logs(
+        self, run_id: RunId, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[LogLine, ...]: ...
+
+    def close(self) -> None:
+        """Release the underlying connections. The repository is unusable afterwards."""
         ...

@@ -20,6 +20,7 @@ from quant_workbench.domain.project import (
     ConfigTarget,
     MetricExtractorSpec,
     MetricKind,
+    MetricPick,
     OutputSpec,
     ProjectSpec,
 )
@@ -51,6 +52,10 @@ class MetricModel(_Strict):
     )
     kind: MetricKind = MetricKind.FLOAT
     unit: str = ""
+    pick: MetricPick = Field(
+        default=MetricPick.LAST,
+        description="Which match wins when several lines match: 'last' (default) or 'first'.",
+    )
 
     @field_validator("pattern")
     @classmethod
@@ -151,7 +156,9 @@ class ManifestModel(_Strict):
             ),
             depends_on=depends_on,
             extractors=tuple(
-                MetricExtractorSpec(name=m.name, pattern=m.pattern, kind=m.kind, unit=m.unit)
+                MetricExtractorSpec(
+                    name=m.name, pattern=m.pattern, kind=m.kind, unit=m.unit, pick=m.pick
+                )
                 for m in self.metrics
             ),
             repo_url=self.repo_url,

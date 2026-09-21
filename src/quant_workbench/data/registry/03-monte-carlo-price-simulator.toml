@@ -17,3 +17,27 @@ artifacts = []
 [[config_targets]]
 file = "config/simulation.py"
 symbols = []
+
+[[metrics]]
+name = "current_price"
+pattern = 'Precio actual:\s*([\d,.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "mean_simulated_price"
+pattern = 'Precio medio simulado:\s*([\d,.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "prob_exceed_target"
+pattern = 'Probabilidad de superar el objetivo:\s*([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "sigma_annual"
+pattern = 'sigma anualizado:\s*([\d.]+)%'
+kind = "percent"
+unit = "%"

@@ -18,6 +18,13 @@ class ManifestSource(StrEnum):
     INFERRED = "inferred"  # guessed from the folder layout (convention over configuration)
 
 
+class MetricPick(StrEnum):
+    """Which match to keep when a pattern matches several lines of the output."""
+
+    LAST = "last"  # the summary printed at the end (the default)
+    FIRST = "first"  # for values that a later section of the output prints again, differently
+
+
 class MetricKind(StrEnum):
     FLOAT = "float"
     INT = "int"
@@ -38,6 +45,7 @@ class MetricExtractorSpec:
     pattern: str
     kind: MetricKind = MetricKind.FLOAT
     unit: str = ""
+    pick: MetricPick = MetricPick.LAST
 
 
 @dataclass(frozen=True, slots=True)

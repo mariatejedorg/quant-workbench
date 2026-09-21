@@ -1,0 +1,16 @@
+=== Datos descargados ===
+Ticker: AAPL | Spot: 338.27
+Contratos descargados: 2715 | válidos tras limpieza (liquidez/moneyness): 602
+Volatilidad implícita calculada para 602 contratos (0 descartados: el solver no convergió)
+
+=== Sonrisa de volatilidad (vencimiento 2026-10-16) ===
+Contratos en la sonrisa: 40
+Rango de IV: 20.75% — 50.85%
+
+=== Validación Black-Scholes vs Monte Carlo ===
+Contrato de referencia: call, strike 340.0, T = 0.068 años, sigma (IV) = 20.75%
+Precio Black-Scholes: 7.0000
+Precio Monte Carlo:   7.0074
+Diferencia relativa:  +0.11%
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-6-opciones-volatilidad-implicita\outputs\dashboard.html)

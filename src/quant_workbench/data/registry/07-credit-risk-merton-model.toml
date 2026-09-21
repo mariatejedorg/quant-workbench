@@ -17,3 +17,27 @@ artifacts = []
 [[config_targets]]
 file = "config/credit.py"
 symbols = []
+
+[[metrics]]
+name = "distance_to_default"
+pattern = 'Distance to Default:\s*(-?[\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "pd_real_world"
+pattern = 'impago real-world:\s*([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "pd_risk_neutral"
+pattern = 'impago neutral al riesgo:\s*([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "asset_volatility"
+pattern = 'sigma_V\):\s*([\d.]+)%'
+kind = "percent"
+unit = "%"

@@ -1,0 +1,13 @@
+
+=== Parámetros estimados del histórico ===
+mu diario: 0.00098 | sigma diario: 0.00960
+mu anualizado: +24.81% | sigma anualizado: 15.23%
+
+=== Resultado de la simulación ===
+Precio actual: 20,131.40
+Precio objetivo (+10%): 22,144.54
+Precio medio simulado: 25,835.35
+Intervalo de confianza 90% (percentiles 5-95): 19,812.70 — 32,826.39
+Probabilidad de superar el objetivo: 82.6%
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-3-monte-carlo\outputs\dashboard.html)

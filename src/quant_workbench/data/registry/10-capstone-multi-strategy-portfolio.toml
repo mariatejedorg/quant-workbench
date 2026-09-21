@@ -17,3 +17,27 @@ artifacts = []
 [[config_targets]]
 file = "config/multi_strategy.py"
 symbols = []
+
+[[metrics]]
+name = "strategy_return"
+pattern = 'Multi-estrategia: retorno ([+-]?[\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "strategy_sharpe"
+pattern = 'Multi-estrategia:.*Sharpe ([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "strategy_max_drawdown"
+pattern = 'Multi-estrategia:.*drawdown m.x\. (-?[\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "equal_weight_max_drawdown"
+pattern = 'Igual-ponderada: retorno.*drawdown m.x\. (-?[\d.]+)%'
+kind = "percent"
+unit = "%"

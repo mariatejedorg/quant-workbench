@@ -1,0 +1,72 @@
+Base de datos creada en C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-4-fundamentales-sql\db\fundamentales.db (18 empresas, 2278 filas de precio)
+
+=== 01_ranking_per_por_sector.sql ===
+Objetivo de negocio: dentro de cada sector, ¿qué empresas cotizan más baratas relativas a beneficio (PER más bajo) y cuáles más caras? Útil como primer filtro de "valor" dentro de un sector antes de un análisis más fino. Concepto: WHERE filtra filas individuales (aquí, descarta PER nulos o negativos, que no son comparables); ORDER BY hace el ranking, no GROUP BY.
+                sector           nombre  ticker       per
+Communication Services Deutsche Telekom  DTE.DE 16.264046
+     Consumer Cyclical             LVMH   MC.PA 20.681093
+     Consumer Cyclical          Inditex  ITX.MC 28.851484
+    Consumer Defensive         Unilever  ULVR.L 21.653845
+    Consumer Defensive           Nestlé NESN.SW 27.692040
+                Energy           Repsol  REP.MC  8.730519
+    Financial Services             BBVA BBVA.MC 13.222222
+    Financial Services  Banco Santander  SAN.MC 14.470455
+            Healthcare            Roche   RHHBY 23.933054
+            Healthcare         Novartis NOVN.SW 24.033960
+           Industrials           Airbus  AIR.PA 27.556590
+           Industrials          Siemens  SIE.DE 28.822353
+            Technology              SAP  SAP.DE 26.934132
+            Technology        Microsoft    MSFT 27.595541
+            Technology            Apple    AAPL 35.986220
+            Technology             ASML ASML.AS 58.912098
+             Utilities        Iberdrola  IBE.MC 25.175000
+
+=== 02_mejor_margen_por_sector.sql ===
+Objetivo de negocio: ¿qué empresa es la más rentable (mejor margen de beneficio) dentro de cada sector? Es la pregunta típica al construir una cesta "calidad" sector a sector, en vez de comparar márgenes entre sectores muy distintos entre sí (un margen del 8% puede ser excelente en retail y mediocre en tecnología). Concepto: subconsulta correlacionada -- para cada empresa, comprueba que su margen es el máximo dentro de su propio sector.
+                sector           nombre  ticker  margen_beneficio
+            Technology        Microsoft    MSFT           0.40305
+    Financial Services  Banco Santander  SAN.MC           0.33464
+            Healthcare         Novartis NOVN.SW           0.22502
+    Consumer Defensive         Unilever  ULVR.L           0.18319
+             Utilities        Iberdrola  IBE.MC           0.15883
+     Consumer Cyclical          Inditex  ITX.MC           0.15592
+           Industrials          Siemens  SIE.DE           0.09796
+Communication Services Deutsche Telekom  DTE.DE           0.07013
+                Energy           Repsol  REP.MC           0.06433
+
+=== 03_evolucion_metrica_por_sector.sql ===
+Objetivo de negocio: vista agregada por sector -- capitalización total, PER medio y nº de empresas -- para saber qué sectores pesan más en la cesta y si cotizan caros o baratos como bloque, no empresa a empresa. Concepto: GROUP BY agrega FILAS en grupos (aquí, por sector); WHERE (en la consulta 01) filtra filas individuales antes de agregar -- son operaciones distintas y en distinto momento de la ejecución (WHERE antes de agrupar, HAVING después si hiciera falta filtrar sobre el resultado agregado).
+                sector  num_empresas  cap_total_bn  per_medio  margen_medio_pct
+            Technology             4        9034.3       37.4              29.6
+            Healthcare             2         606.7       24.0              21.1
+           Industrials             2         389.1       28.2               8.8
+    Financial Services             2         323.1       13.8              33.0
+    Consumer Defensive             2         308.9       24.7              13.3
+     Consumer Cyclical             2         223.8       24.8              14.6
+Communication Services             2         158.8       16.3              -1.0
+             Utilities             1         134.4       25.2              15.9
+                Energy             1          29.2        8.7               6.4
+
+=== 04_rentabilidad_reciente_por_empresa.sql ===
+Objetivo de negocio: ¿cómo se ha comportado el precio de cada empresa en el periodo cargado? Cruza los fundamentales (tabla empresas) con el precio real (tabla precios_historicos) para poder contrastar "barata sobre el papel" (PER bajo) con "cómo la está tratando el mercado" (rentabilidad reciente) en la misma consulta. Concepto: JOIN real entre dos tablas relacionadas por ticker -- exactamente lo que un CSV suelto no puede resolver sin duplicar datos.
+                sector           nombre  ticker       per  rentabilidad_pct
+                Energy           Repsol  REP.MC  8.730519              45.3
+    Financial Services             BBVA BBVA.MC 13.222222              28.4
+            Technology        Microsoft    MSFT 27.595541              23.8
+            Technology             ASML ASML.AS 58.912098              21.7
+    Financial Services  Banco Santander  SAN.MC 14.470455              16.1
+           Industrials          Siemens  SIE.DE 28.822353              16.1
+            Technology            Apple    AAPL 35.986220              15.0
+           Industrials           Airbus  AIR.PA 27.556590              12.8
+            Technology              SAP  SAP.DE 26.934132               6.2
+     Consumer Cyclical          Inditex  ITX.MC 28.851484               3.2
+Communication Services       Telefónica  TEF.MC       NaN               3.0
+             Utilities        Iberdrola  IBE.MC 25.175000               2.5
+            Healthcare         Novartis NOVN.SW 24.033960               2.5
+    Consumer Defensive           Nestlé NESN.SW 27.692040               0.7
+            Healthcare            Roche   RHHBY 23.933054              -0.0
+Communication Services Deutsche Telekom  DTE.DE 16.264046              -9.2
+    Consumer Defensive         Unilever  ULVR.L 21.653845             -10.7
+     Consumer Cyclical             LVMH   MC.PA 20.681093             -16.4
+
+Dashboard interactivo generado en: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-4-fundamentales-sql\outputs\dashboard.html

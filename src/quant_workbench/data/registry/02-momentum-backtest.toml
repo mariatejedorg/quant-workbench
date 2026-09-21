@@ -17,3 +17,33 @@ artifacts = []
 [[config_targets]]
 file = "config/strategy.py"
 symbols = []
+
+[[metrics]]
+name = "strategy_return"
+pattern = 'Estrategia \| rentabilidad anual\.: ([+-]?[\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "strategy_sharpe"
+pattern = 'Estrategia \|.*Sharpe: ([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "strategy_max_drawdown"
+pattern = 'Estrategia \|.*max drawdown: (-?[\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "benchmark_return"
+pattern = 'Benchmark \| rentabilidad anual\.: ([+-]?[\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "trades"
+pattern = 'Operaciones ejecutadas.*: (\d+)'
+kind = "int"
+unit = ""

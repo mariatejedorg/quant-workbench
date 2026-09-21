@@ -1,0 +1,8 @@
+
+=== Estrategia vs. benchmark ===
+Estrategia | rentabilidad anual.: +20.81% | volatilidad: 13.84% | Sharpe: 1.50 | max drawdown: -12.60%
+ Benchmark | rentabilidad anual.: +28.17% | volatilidad: 15.20% | Sharpe: 1.85 | max drawdown: -12.60%
+
+Operaciones ejecutadas (cruces dorados): 1
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-2-momentum-backtest\outputs\dashboard.html)

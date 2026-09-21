@@ -17,3 +17,33 @@ artifacts = ["outputs/presentacion_portfolio_risk.pptx"]
 [[config_targets]]
 file = "config/portfolio.py"
 symbols = []
+
+[[metrics]]
+name = "beta"
+pattern = '^beta:\s*([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "var_historical"
+pattern = '^var_historico:\s*([\d.]+)'
+kind = "float"
+unit = "ratio"
+
+[[metrics]]
+name = "var_parametric"
+pattern = '^var_parametrico:\s*([\d.]+)'
+kind = "float"
+unit = "ratio"
+
+[[metrics]]
+name = "sharpe_portfolio"
+pattern = '^sharpe_cartera:\s*([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "sharpe_benchmark"
+pattern = '^sharpe_benchmark:\s*([\d.]+)'
+kind = "float"
+unit = ""

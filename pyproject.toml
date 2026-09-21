@@ -111,7 +111,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN", "PLR2004", "S105", "S106"]
+# Tests hold long literals (verbatim error text, fixtures) that are clearer unwrapped.
+"tests/**" = ["S101", "ANN", "PLR2004", "S105", "S106", "E501", "PLR0917", "ARG001", "ARG002"]
 "src/quant_workbench/cli/**" = ["T20"]  # the CLI's job is to print
 
 [tool.ruff.lint.isort]

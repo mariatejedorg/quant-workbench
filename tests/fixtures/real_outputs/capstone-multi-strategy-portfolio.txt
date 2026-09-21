@@ -1,0 +1,16 @@
+=== Datos descargados ===
+Universo: 8 activos | Sesiones: 1022
+
+=== Backtest: 39 rebalanceos mensuales ===
+
+=== Comparación de rendimiento (anualizado) ===
+Multi-estrategia: retorno +36.90% | vol 15.62% | Sharpe 2.36 | drawdown máx. -10.09%
+ Igual-ponderada: retorno +19.30% | vol 15.41% | Sharpe 1.25 | drawdown máx. -18.66%
+         S&P 500: retorno +18.89% | vol 14.54% | Sharpe 1.30 | drawdown máx. -18.90%
+
+=== Últimos 3 rebalanceos ===
+2026-07-01: ASML: 14.7%, Iberdrola: 31.6%, Inditex: 5.4%, Repsol: 31.1%, Banco Santander: 17.1%
+2026-08-03: Airbus: 0.0%, ASML: 10.7%, Iberdrola: 26.3%, Inditex: 12.4%, Repsol: 33.5%, Banco Santander: 17.0%
+2026-09-01: Airbus: 0.0%, ASML: 10.8%, Iberdrola: 23.1%, Inditex: 14.7%, Repsol: 34.8%, Banco Santander: 16.6%
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-10-capstone-multi-estrategia\outputs\dashboard.html)

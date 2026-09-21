@@ -17,3 +17,21 @@ artifacts = []
 [[config_targets]]
 file = "config/portfolio.py"
 symbols = []
+
+[[metrics]]
+name = "max_sharpe"
+pattern = 'M.ximo Sharpe:\s*[+-]?[\d.]+% / [\d.]+% / (-?[\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "min_variance_vol"
+pattern = 'M.nima varianza:\s*[+-]?[\d.]+% / ([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "equal_weight_sharpe"
+pattern = 'Igual-ponderada:\s*[+-]?[\d.]+% / [\d.]+% / (-?[\d.]+)'
+kind = "float"
+unit = ""

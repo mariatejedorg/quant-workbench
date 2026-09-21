@@ -17,3 +17,33 @@ artifacts = []
 [[config_targets]]
 file = "config/options.py"
 symbols = []
+
+[[metrics]]
+name = "spot"
+pattern = 'Spot:\s*([\d,.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "atm_iv"
+pattern = 'sigma \(IV\) = ([\d.]+)%'
+kind = "percent"
+unit = "%"
+
+[[metrics]]
+name = "bs_price"
+pattern = 'Precio Black-Scholes:\s*([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "mc_price"
+pattern = 'Precio Monte Carlo:\s*([\d.]+)'
+kind = "float"
+unit = ""
+
+[[metrics]]
+name = "bs_vs_mc_diff"
+pattern = 'Diferencia relativa:\s*([+-]?[\d.]+)%'
+kind = "percent"
+unit = "%"

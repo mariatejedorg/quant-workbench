@@ -10,3 +10,4 @@ is a new record that supersedes the old one.
 | [0001](0001-hexagonal-architecture.md) | Hexagonal architecture with an enforced dependency rule | Accepted |
 | [0002](0002-asyncio-core-in-a-worker-thread.md) | asyncio engine in a worker thread, bridged to Qt signals | Accepted |
 | [0003](0003-libcst-for-config-editing.md) | Format-preserving config editing with libcst | Accepted |
+| [0004](0004-do-not-force-utf8-mode-in-child-processes.md) | Do not force Python's UTF-8 mode in child processes | Accepted |

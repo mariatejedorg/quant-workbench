@@ -17,3 +17,21 @@ artifacts = []
 [[config_targets]]
 file = "src/data.py"
 symbols = ["TICKERS"]
+
+[[metrics]]
+name = "santander_annual_return"
+pattern = '^Banco Santander\s+(-?\d+\.\d+)\s+-?\d+\.\d+\s+-?\d+\.\d+\s*$'
+kind = "float"
+unit = "ratio"
+
+[[metrics]]
+name = "lvmh_annual_return"
+pattern = '^LVMH\s+(-?\d+\.\d+)\s+-?\d+\.\d+\s+-?\d+\.\d+\s*$'
+kind = "float"
+unit = "ratio"
+
+[[metrics]]
+name = "ibex35_volatility"
+pattern = '^IBEX 35\s+-?\d+\.\d+\s+(-?\d+\.\d+)\s+-?\d+\.\d+\s*$'
+kind = "float"
+unit = "ratio"

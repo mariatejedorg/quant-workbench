@@ -1,0 +1,17 @@
+=== Datos descargados ===
+Ticker: F
+Capitalización bursátil actual (E): 52,755,888,849
+Punto de impago (D): 167,907,000,000
+Ratio D/E actual: 3.18x
+
+=== Activos recuperados (procedimiento iterativo KMV) ===
+Valor de activos actual (V): 213,273,866,899
+Volatilidad de activos (sigma_V): 7.99%
+Deriva de activos estimada (mu_V): +3.47%
+
+=== Riesgo de crédito (horizonte 1 año) ===
+Distance to Default: 3.39
+Probabilidad de impago real-world: 0.04%
+Probabilidad de impago neutral al riesgo: 0.02%
+
+Gráficos guardados en outputs/ (dashboard interactivo: C:\Users\carlo\OneDrive\Documentos\Archivos personales\Quant - María\proyecto-7-riesgo-credito-merton\outputs\dashboard.html)

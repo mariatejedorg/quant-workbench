@@ -1,0 +1,171 @@
+"""Test doubles for the engine's ports (structural typing: no inheritance needed)."""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from quant_workbench.domain.errors import EnvironmentSetupError
+from quant_workbench.domain.ids import RunId, Slug, parse_slug
+from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
+from quant_workbench.domain.project import (
+    ConfigTarget,
+    ManifestSource,
+    MetricExtractorSpec,
+    OutputSpec,
+    Project,
+    ProjectSpec,
+)
+from quant_workbench.domain.runs import LogLine, LogStream, OutputFileState, Run
+
+
+def make_project(
+    root: Path,
+    slug: str,
+    *,
+    depends_on: Sequence[str] = (),
+    extractors: Sequence[MetricExtractorSpec] = (),
+    config_files: Sequence[str] = (),
+) -> Project:
+    """A Project whose spec is built in memory (no files needed unless a test wants them)."""
+    spec = ProjectSpec(
+        slug=parse_slug(slug),
+        title=slug.replace("-", " ").title(),
+        folder=slug,
+        category="Test",
+        order=1,
+        depends_on=tuple(parse_slug(d) for d in depends_on),
+        extractors=tuple(extractors),
+        config_targets=tuple(ConfigTarget(file=f) for f in config_files),
+        outputs=OutputSpec(dashboard="outputs/dashboard.html"),
+    )
+    return Project(spec=spec, root=root / slug, source=ManifestSource.REGISTRY)
+
+
+@dataclass
+class Script:
+    """What a fake process does when it is 'run'."""
+
+    lines: list[tuple[LogStream, str]] = field(default_factory=list)
+    exit_code: int = 0
+    timed_out: bool = False
+    #: Block until this event is set (lets a test hold a run open).
+    hold: asyncio.Event | None = None
+    delay: float = 0.0
+    samples: list[ResourceSample] = field(default_factory=list)
+
+
+class ScriptedRunner:
+    """A ProcessRunner that replays scripts instead of starting processes."""
+
+    def __init__(self, script_for: Callable[[ProcessSpec], Script] | Script | None = None) -> None:
+        if script_for is None:
+            script_for = Script()
+        self._script_for = (
+            (lambda _spec: script_for) if isinstance(script_for, Script) else script_for
+        )
+        self.calls: list[ProcessSpec] = []
+        self.started: list[str] = []
+        self.running = 0
+        self.max_running = 0
+
+    async def run(
+        self,
+        spec: ProcessSpec,
+        *,
+        on_line: Callable[[LogStream, str], None],
+        on_sample: Callable[[ResourceSample], None] | None = None,
+        timeout_seconds: float | None = None,
+    ) -> ProcessOutcome:
+        script = self._script_for(spec)
+        self.calls.append(spec)
+        self.started.append(spec.cwd.name)
+        self.running += 1
+        self.max_running = max(self.max_running, self.running)
+        try:
+            for stream, text in script.lines:
+                on_line(stream, text)
+            if on_sample is not None:
+                for sample in script.samples:
+                    on_sample(sample)
+            if script.hold is not None:
+                await script.hold.wait()
+            if script.delay:
+                await asyncio.sleep(script.delay)
+        finally:
+            self.running -= 1
+        return ProcessOutcome(
+            exit_code=None if script.timed_out else script.exit_code, timed_out=script.timed_out
+        )
+
+
+class MemoryRepository:
+    """RunRepository kept in dictionaries."""
+
+    def __init__(self) -> None:
+        self.runs: dict[RunId, Run] = {}
+        self.log_lines: dict[RunId, list[LogLine]] = {}
+        self.saves: list[Run] = []
+
+    def save(self, run: Run) -> None:
+        self.runs[run.id] = run
+        self.saves.append(run)
+
+    def get(self, run_id: RunId) -> Run | None:
+        return self.runs.get(run_id)
+
+    def list_runs(self, project: Slug | None = None, *, limit: int = 50) -> tuple[Run, ...]:
+        chosen = [r for r in self.runs.values() if project is None or r.project == project]
+        return tuple(sorted(chosen, key=lambda r: r.id, reverse=True)[:limit])
+
+    def latest(self, project: Slug) -> Run | None:
+        runs = self.list_runs(project, limit=1)
+        return runs[0] if runs else None
+
+    def append_logs(self, run_id: RunId, lines: Sequence[LogLine]) -> None:
+        self.log_lines.setdefault(run_id, []).extend(lines)
+
+    def logs(
+        self, run_id: RunId, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[LogLine, ...]:
+        lines = self.log_lines.get(run_id, [])[offset:]
+        return tuple(lines if limit is None else lines[:limit])
+
+    def close(self) -> None:
+        """Nothing to release: kept so the fake satisfies the RunRepository port."""
+
+
+class MemoryFiles:
+    """ProjectFiles backed by a dict of ``relative path -> text``."""
+
+    def __init__(
+        self, files: dict[str, str] | None = None, outputs: tuple[OutputFileState, ...] = ()
+    ) -> None:
+        self.files = files or {}
+        self.outputs = outputs
+
+    def read_text(self, project: Project, relative: str) -> str | None:
+        return self.files.get(relative)
+
+    def snapshot_outputs(self, project: Project) -> tuple[OutputFileState, ...]:
+        return self.outputs
+
+
+class FixedInterpreter:
+    """InterpreterResolver that always answers with one interpreter (or none)."""
+
+    def __init__(self, python: Path | None) -> None:
+        self._python = python
+
+    def find(self, project: Project) -> Path | None:
+        return self._python
+
+    def resolve(self, project: Project) -> Path:
+        if self._python is None:
+            raise EnvironmentSetupError(
+                f"{project.title} has no virtual environment",
+                hint=f"Create it with `qw env setup {project.slug}`.",
+            )
+        return self._python
