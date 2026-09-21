@@ -25,6 +25,11 @@ class AppPaths:
     def database_file(self) -> Path:
         return self.data_dir / "workbench.sqlite3"
 
+    @property
+    def backups_dir(self) -> Path:
+        """Where the previous version of every file the workbench rewrites is kept."""
+        return self.data_dir / "backups"
+
     @classmethod
     def under(cls, root: Path) -> AppPaths:
         """Place every directory below ``root`` (used by tests and ``qw --home``)."""

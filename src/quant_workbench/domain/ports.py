@@ -7,11 +7,12 @@ from anything and test doubles are trivial to write.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol, TypeVar, runtime_checkable
 
+from quant_workbench.domain.config import Constant
 from quant_workbench.domain.events import DomainEvent
 from quant_workbench.domain.ids import RunId, Slug
 from quant_workbench.domain.process import ProcessOutcome, ProcessSpec, ResourceSample
@@ -119,6 +120,31 @@ class ProjectFiles(Protocol):
 
     def snapshot_outputs(self, project: Project) -> tuple[OutputFileState, ...]:
         """Size and SHA-256 of every declared output file that currently exists."""
+        ...
+
+    def write_text(self, project: Project, relative: str, text: str) -> Path | None:
+        """Replace ``relative`` with ``text`` atomically, byte for byte (no newline changes).
+
+        The previous content is copied to the workbench's backup folder first; the backup's
+        location is returned (``None`` if the file did not exist, so there was nothing to keep).
+        """
+        ...
+
+
+class ConfigEditor(Protocol):
+    """Reads and rewrites the literal constants of a Python source file."""
+
+    def constants(self, source: str, *, symbols: Collection[str] = ()) -> tuple[Constant, ...]:
+        """The editable constants in ``source`` (only ``symbols`` when given), in file order."""
+        ...
+
+    def edit(self, source: str, changes: Mapping[str, object]) -> str:
+        """``source`` with the constants in ``changes`` set to their new values.
+
+        Everything else in the file (comments, spacing, line endings, other constants) is
+        returned untouched. Raises :class:`~quant_workbench.domain.errors.UnsafeEditError`
+        rather than produce a file it cannot vouch for.
+        """
         ...
 
 

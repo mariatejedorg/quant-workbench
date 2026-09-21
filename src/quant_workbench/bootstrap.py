@@ -18,14 +18,16 @@ from functools import cached_property
 from pathlib import Path
 
 from quant_workbench.application.catalog import ProjectCatalog
+from quant_workbench.application.config import ConfigService
 from quant_workbench.application.environments import EnvironmentService
 from quant_workbench.application.jobs import JobExecutor
 from quant_workbench.application.runs import RunService
 from quant_workbench.application.settings import Settings, load_settings
 from quant_workbench.domain.failures import FailureSignature
 from quant_workbench.domain.paths import AppPaths
-from quant_workbench.domain.ports import Clock, EventBus, RunRepository
+from quant_workbench.domain.ports import Clock, EventBus, ProjectFiles, RunRepository
 from quant_workbench.infrastructure.clock import SystemClock
+from quant_workbench.infrastructure.config_editor import LibCstConfigEditor
 from quant_workbench.infrastructure.event_bus import InProcessEventBus
 from quant_workbench.infrastructure.paths import default_app_paths
 from quant_workbench.infrastructure.process import AsyncSubprocessRunner
@@ -57,6 +59,14 @@ class Container:
         return load_signatures(self.signatures_dir or data_path("failure_signatures"))
 
     @cached_property
+    def project_files(self) -> ProjectFiles:
+        return FileSystemProjectFiles(backups=self.paths.backups_dir, clock=self.clock)
+
+    @cached_property
+    def config(self) -> ConfigService:
+        return ConfigService(files=self.project_files, editor=LibCstConfigEditor())
+
+    @cached_property
     def repository(self) -> RunRepository:
         return SqliteRunRepository(create_sqlite_engine(self.database))
 
@@ -65,7 +75,7 @@ class Container:
         return JobExecutor(
             runner=AsyncSubprocessRunner(self.clock),
             repository=self.repository,
-            files=FileSystemProjectFiles(),
+            files=self.project_files,
             events=self.events,
             clock=self.clock,
             max_concurrency=self.settings.max_concurrency,
@@ -99,7 +109,7 @@ class Container:
             executor=self.executor,
             runner=AsyncSubprocessRunner(self.clock),
             interpreters=VenvInterpreterResolver(),
-            files=FileSystemProjectFiles(),
+            files=self.project_files,
             base_python=Path(sys.executable),
             default_timeout_seconds=self.settings.run_timeout_seconds,
         )

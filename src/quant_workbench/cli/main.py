@@ -14,7 +14,7 @@ from rich.table import Table
 
 from quant_workbench import __version__
 from quant_workbench.bootstrap import build_container
-from quant_workbench.cli import catalog_commands, run_commands
+from quant_workbench.cli import catalog_commands, config_commands, run_commands
 from quant_workbench.cli.common import configure_stdio, get_container
 from quant_workbench.domain.paths import AppPaths
 
@@ -27,6 +27,7 @@ app = typer.Typer(
 console = Console()
 catalog_commands.register(app)
 run_commands.register(app)
+config_commands.register(app)
 
 
 def _version_callback(value: bool) -> None:

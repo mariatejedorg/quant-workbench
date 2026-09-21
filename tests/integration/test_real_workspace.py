@@ -11,7 +11,10 @@ from pathlib import Path
 import pytest
 
 from quant_workbench.application.catalog import ProjectCatalog
+from quant_workbench.application.config import ConfigService
 from quant_workbench.domain.graph import EdgeOrigin
+from quant_workbench.infrastructure.config_editor import LibCstConfigEditor
+from quant_workbench.infrastructure.project_files import FileSystemProjectFiles
 from quant_workbench.infrastructure.resources import data_path
 from quant_workbench.infrastructure.workspace import FileSystemWorkspace
 
@@ -58,3 +61,43 @@ def test_static_analysis_finds_exactly_the_declared_dependencies() -> None:
     assert all(o == {EdgeOrigin.DECLARED, EdgeOrigin.DETECTED} for o in edges.values())
     assert graph.find_cycle() is None
     assert len(graph.generations()) == 3
+
+
+# ------------------------------------------------------------ M3: the config editor
+def test_every_project_exposes_its_declared_config_symbols_and_they_round_trip() -> None:
+    """Reads the real files (never writes): editing each constant to its own value is a no-op."""
+    catalog = load()
+    service = ConfigService(files=FileSystemProjectFiles(), editor=LibCstConfigEditor())
+
+    for project in catalog.projects:  # type: ignore[attr-defined]
+        constants = service.constants(project)
+        declared = {s for target in project.spec.config_targets for s in target.symbols}
+        found = {c.constant.name for c in constants}
+
+        assert constants, f"{project.slug} has no editable constants"
+        assert declared <= found, f"{project.slug}: declared symbols not found: {declared - found}"
+        same_values = {c.qualified_name: c.constant.value for c in constants}
+        assert service.plan(project, same_values).is_empty, project.slug
+
+
+def test_a_real_edit_is_previewed_as_a_minimal_diff_without_touching_the_disk() -> None:
+    catalog = load()
+    project = catalog.get("garch-volatility-forecasting")  # type: ignore[attr-defined]
+    service = ConfigService(files=FileSystemProjectFiles(), editor=LibCstConfigEditor())
+    path = project.root / "config" / "garch.py"
+    before = path.read_bytes()
+
+    plan = service.plan(project, {"FORECAST_HORIZON_DAYS": 45, "TICKER": "MSFT"})
+
+    changes = [
+        line.rstrip("\r")
+        for line in plan.diff.splitlines()
+        if line[:1] in "+-" and not line.startswith(("+++", "---"))
+    ]
+    assert changes == [
+        '-TICKER = "AAPL"',
+        '+TICKER = "MSFT"',
+        "-FORECAST_HORIZON_DAYS = 30",
+        "+FORECAST_HORIZON_DAYS = 45",
+    ]
+    assert path.read_bytes() == before

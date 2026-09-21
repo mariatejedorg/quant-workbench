@@ -28,6 +28,7 @@ def make_project(
     depends_on: Sequence[str] = (),
     extractors: Sequence[MetricExtractorSpec] = (),
     config_files: Sequence[str] = (),
+    config_targets: Sequence[ConfigTarget] = (),
 ) -> Project:
     """A Project whose spec is built in memory (no files needed unless a test wants them)."""
     spec = ProjectSpec(
@@ -38,7 +39,7 @@ def make_project(
         order=1,
         depends_on=tuple(parse_slug(d) for d in depends_on),
         extractors=tuple(extractors),
-        config_targets=tuple(ConfigTarget(file=f) for f in config_files),
+        config_targets=(*(ConfigTarget(file=f) for f in config_files), *config_targets),
         outputs=OutputSpec(dashboard="outputs/dashboard.html"),
     )
     return Project(spec=spec, root=root / slug, source=ManifestSource.REGISTRY)
@@ -145,12 +146,19 @@ class MemoryFiles:
     ) -> None:
         self.files = files or {}
         self.outputs = outputs
+        self.writes: list[tuple[str, str]] = []
 
     def read_text(self, project: Project, relative: str) -> str | None:
         return self.files.get(relative)
 
     def snapshot_outputs(self, project: Project) -> tuple[OutputFileState, ...]:
         return self.outputs
+
+    def write_text(self, project: Project, relative: str, text: str) -> Path | None:
+        self.writes.append((relative, text))
+        existed = relative in self.files
+        self.files[relative] = text
+        return Path(f"backups/{relative}") if existed else None
 
 
 class FixedInterpreter:

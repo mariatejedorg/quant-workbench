@@ -87,6 +87,8 @@ include = ["src", "tests", "docs"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+# Real project files kept as golden inputs: they must stay byte-for-byte as the author wrote them
+extend-exclude = ["tests/fixtures"]
 
 [tool.ruff.lint]
 select = [
@@ -148,6 +150,7 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "integration: touches the filesystem, subprocesses or git",
     "gui: needs PySide6 (run offscreen)",
+    "property: property-based test (hypothesis)",
     "network: needs internet access",
     "slow: takes more than a couple of seconds",
 ]

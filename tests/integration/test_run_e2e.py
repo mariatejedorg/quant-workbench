@@ -68,7 +68,7 @@ def stack(accented_root: Path):  # type: ignore[no-untyped-def]
         (made.root / "config").mkdir(exist_ok=True)
         (made.root / "outputs").mkdir(exist_ok=True)
         (made.root / "src" / "main.py").write_text(main, encoding="utf-8")
-        (made.root / "config" / "credit.py").write_text(CONFIG, encoding="utf-8")
+        (made.root / "config" / "credit.py").write_bytes(CONFIG.encode("utf-8"))  # exact: no CRLF
         (made.root / "outputs" / "dashboard.html").write_text("<html>dash</html>", encoding="utf-8")
         return made
 
