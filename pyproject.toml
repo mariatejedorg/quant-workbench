@@ -1,0 +1,170 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quant-workbench"
+dynamic = ["version"]
+description = "Desktop workbench to run, inspect, debug and extend a portfolio of quantitative finance projects."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "María Tejedor García", email = "mariatg.invers@gmail.com" }]
+keywords = ["quantitative-finance", "workbench", "pyside6", "asyncio", "developer-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+# Core runtime: everything the headless engine and the `qw` CLI need. No Qt here.
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "platformdirs>=4.2",
+    "typer>=0.12",
+    "rich>=13.7",
+    "sqlalchemy>=2.0.30",
+    "libcst>=1.4",
+    "psutil>=5.9",
+    "watchdog>=4.0",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+# The desktop application. Installed with `pip install "quant-workbench[gui]"`.
+gui = [
+    "PySide6>=6.7",
+    "pygments>=2.18",
+    "markdown-it-py>=3.0",
+    "Pillow>=10.3",
+]
+# Extra needed only to test the desktop UI: `pip install -e ".[dev,gui,gui-test]"`.
+# Kept apart from `dev` because pytest-qt refuses to load without a Qt binding, which
+# would make the headless core test job depend on Qt.
+gui-test = [
+    "pytest-qt>=4.4",
+]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.100",
+    "types-psutil",
+    "types-pygments",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+qw = "quant_workbench.cli.main:app"
+
+[project.entry-points."quant_workbench.checkers"]
+# Built-in checkers register here too, so the plugin path is exercised by the
+# project itself (see docs/plugins.md). Populated from milestone M4.
+
+[project.urls]
+Homepage = "https://github.com/mariatejedorg/quant-workbench"
+Documentation = "https://github.com/mariatejedorg/quant-workbench/tree/main/docs"
+
+[tool.hatch.version]
+path = "src/quant_workbench/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quant_workbench"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "registry", "schemas", "failure_signatures", "templates"]
+
+# --------------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplify
+    "C4",       # comprehensions
+    "PTH",      # prefer pathlib (paths with spaces/accents matter in this project)
+    "RUF",      # ruff-specific
+    "ANN",      # annotations
+    "S",        # bandit (subprocess usage is deliberate and reviewed)
+    "T20",      # no stray print()
+    "PL",       # pylint subset
+]
+ignore = [
+    "ANN401",   # Any is occasionally the honest type at plugin boundaries
+    "PLR0913",  # many-argument dataclass constructors are fine
+    "S603", "S607",  # subprocess with argument lists is the intended, safe form
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN", "PLR2004", "S105", "S106"]
+"src/quant_workbench/cli/**" = ["T20"]  # the CLI's job is to print
+
+[tool.ruff.lint.isort]
+known-first-party = ["quant_workbench"]
+
+# --------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+files = ["src/quant_workbench"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# Qt code is typed but not held to --strict (Qt's own stubs are loose in places).
+module = "quant_workbench.ui.*"
+disallow_any_generics = false
+disallow_untyped_decorators = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["libcst.*", "watchdog.*"]
+ignore_missing_imports = true
+
+# ------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: touches the filesystem, subprocesses or git",
+    "gui: needs PySide6 (run offscreen)",
+    "network: needs internet access",
+    "slow: takes more than a couple of seconds",
+]
+
+# ----------------------------------------------------------------- coverage
+[tool.coverage.run]
+source = ["quant_workbench"]
+branch = true
+omit = ["src/quant_workbench/ui/*", "src/quant_workbench/__main__.py"]
+
+[tool.coverage.report]
+# Gate applies to the headless core (domain + application), see docs/adr/0001.
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]

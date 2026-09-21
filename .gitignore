@@ -1,0 +1,19 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+coverage.xml
+.workbench/
+*.log
+.DS_Store
+# generated screenshots from GUI tests are artifacts, not sources
+tests/gui/_screenshots/
