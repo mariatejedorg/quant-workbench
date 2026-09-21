@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import functools
 import subprocess
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from quant_workbench import bootstrap
 from quant_workbench.application.catalog import Catalog, ProjectCatalog
 from quant_workbench.application.sync import SyncService, SyncStatus
+from quant_workbench.cli import main
 from quant_workbench.cli.main import app
 from quant_workbench.domain.errors import GitError, ManifestError
 from quant_workbench.infrastructure.git_cli import GitCli
@@ -259,3 +262,71 @@ def test_a_real_clone_from_github(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert (workspace / "proyecto-1-analisis-mercado" / "src" / "main.py").is_file()
     assert "cloned" in result.output
+
+
+# ------------------------------------------------- the command itself, on local origins
+@pytest.fixture
+def local_cli(
+    monkeypatch: pytest.MonkeyPatch, registry: Path, origins: Path, tmp_path: Path
+) -> Path:
+    """`qw` wired to the test registry, trusting the local origins; returns the app home."""
+    monkeypatch.setattr(
+        main, "build_container", functools.partial(bootstrap.build_container, registry_dir=registry)
+    )
+    monkeypatch.setattr(
+        bootstrap, "SyncService", lambda git: SyncService(git, trusted_prefixes=(str(origins),))
+    )
+    return tmp_path / "home"
+
+
+def qw_sync(home: Path, workspace: Path, *args: str) -> tuple[int, str]:
+    result = runner.invoke(app, ["--home", str(home), "sync", *args, "-w", str(workspace)])
+    return result.exit_code, result.output
+
+
+def test_the_command_clones_then_checks_what_it_cloned(
+    local_cli: Path, accented_root: Path
+) -> None:
+    code, output = qw_sync(local_cli, accented_root)
+
+    assert code == 0, output
+    assert output.count("cloned") == 2
+    assert "venv-missing" in output  # the doctor ran on the new projects
+    assert "qw env setup --all" in output
+    assert (accented_root / "proyecto-1-análisis" / ".git").is_dir()
+
+
+def test_the_command_has_nothing_to_do_the_second_time(
+    local_cli: Path, accented_root: Path
+) -> None:
+    qw_sync(local_cli, accented_root)
+
+    code, output = qw_sync(local_cli, accented_root)
+
+    assert code == 0
+    assert "Nothing to sync" in output
+
+
+def test_the_command_exits_with_an_error_when_a_clone_fails(
+    local_cli: Path, accented_root: Path, registry: Path, origins: Path
+) -> None:
+    (registry / "gamma.toml").write_text(
+        registry_entry("gamma", "proyecto-0-roto", str(origins / "missing.git")), encoding="utf-8"
+    )
+
+    code, output = qw_sync(local_cli, accented_root)
+
+    assert code == 1
+    assert "failed" in output
+    assert (accented_root / "proyecto-2-opciones" / ".git").is_dir()  # the others still cloned
+
+
+@pytest.mark.slow
+def test_setup_builds_the_environment_of_what_was_cloned(
+    local_cli: Path, accented_root: Path
+) -> None:
+    code, output = qw_sync(local_cli, accented_root, "alpha", "--setup")
+
+    assert code == 0, output
+    assert (accented_root / "proyecto-1-análisis" / "venv").is_dir()
+    assert "Setting up environments" in output

@@ -120,6 +120,11 @@ class MainWindow(QMainWindow):
             dark = app.styleHints().colorScheme() == Qt.ColorScheme.Dark
         return tokens_for(theme, system_is_dark=dark)
 
+    @property
+    def controller(self) -> AppController:
+        """The controller this window drives (also used by the screenshot script)."""
+        return self._controller
+
     def _build_models(self) -> None:
         self.project_model = ProjectListModel(self._tokens, self)
         self.project_filter = QSortFilterProxyModel(self)

@@ -119,6 +119,7 @@ ignore = [
 # Tests hold long literals (verbatim error text, fixtures) that are clearer unwrapped.
 "tests/**" = ["S101", "ANN", "PLR2004", "S105", "S106", "E501", "PLR0917", "ARG001", "ARG002"]
 "src/quant_workbench/cli/**" = ["T20"]  # the CLI's job is to print
+"scripts/**" = ["T20"]  # a command-line script: printing is its output
 # Qt item models answer data() with one branch per role; that shape is the framework's.
 "src/quant_workbench/ui/models.py" = ["PLR0911"]
 
