@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -100,6 +101,16 @@ class WatchdogChangeSource:
                         if not accept(path):
                             continue
                         mtime = _mtime(path)
+                        # TEMPORARY diagnostics for the macOS-only failure of
+                        # test_merely_reading_a_file_is_not_a_change; removed in the follow-up
+                        # commit once CI shows what is actually happening there.
+                        print(  # noqa: T201 - pragma: no cover - TEMPORARY CI diagnostics
+                            f"QW_WATCH_DEBUG type={event.event_type!r} path={path!r} "
+                            f"mtime={mtime!r} last={last_mtime.get(path)!r} "
+                            f"raw_src={event.src_path!r} raw_dest={event.dest_path!r}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
                         # The modification-time check is scoped to "modified" events only: a
                         # create or a rename is trusted as reported. Broadening it to those too
                         # once regressed a real case — a rename can, depending on the OS, land
