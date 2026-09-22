@@ -85,8 +85,15 @@ async def test_merely_reading_a_file_is_not_a_change(tmp_path: Path) -> None:
     """A project's own process importing its source must never look like an edit.
 
     On Linux, watchdog's inotify backend also reports a file being opened and closed for a
-    read-only open; Windows' backend has no such notion, so this only matters there, but the
-    filtering itself is platform-independent and worth locking in either way.
+    read-only open. On macOS, FSEvents goes further: a metadata-only touch (which a read can
+    cause) is not even distinguishable from a real write at the event-type level, both surfacing
+    as "modified" — so the read is filtered out by comparing modification times, not event
+    types, there. Windows' backend has no notion of either.
+
+    FSEvents' own batching latency is also coarser than this module's default debounce, so the
+    real edit's event can land in a *second* batch rather than the same one as the (correctly
+    dropped) read; every batch received within the patience window is checked, not just the
+    first, to make this assertion regardless of exactly how the events are split up.
     """
     (tmp_path / "src").mkdir()
     read_only = tmp_path / "src" / "read_only.py"
@@ -96,9 +103,15 @@ async def test_merely_reading_a_file_is_not_a_change(tmp_path: Path) -> None:
         read_only.read_text(encoding="utf-8")  # a plain read: must never surface as a change
         real_edit = tmp_path / "src" / "edited.py"
         real_edit.write_text("y = 2\n", encoding="utf-8")
-        batch = await asyncio.wait_for(stream.next_batch(), PATIENCE_SECONDS)
 
-    assert batch == {real_edit}
+        seen: set[Path] = set()
+        deadline = asyncio.get_running_loop().time() + PATIENCE_SECONDS
+        while real_edit not in seen:
+            remaining = deadline - asyncio.get_running_loop().time()
+            assert remaining > 0, f"never saw {real_edit} — batches so far: {seen}"
+            seen |= await asyncio.wait_for(stream.next_batch(), remaining)
+
+    assert seen == {real_edit}
 
 
 @pytest.fixture

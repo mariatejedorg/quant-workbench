@@ -32,6 +32,14 @@ _RELEVANT_EVENT_TYPES = frozenset(
 )
 
 
+def _mtime(path: Path) -> int | None:
+    """The file's modification time in nanoseconds, or ``None`` if it cannot be stat'd right now."""
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return None
+
+
 class _Stream:
     """Implements :class:`~quant_workbench.domain.ports.ChangeStream` over an asyncio queue."""
 
@@ -61,6 +69,20 @@ class WatchdogChangeSource:
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue[Path] = asyncio.Queue()
 
+        # macOS's FSEvents backend goes further than Linux: it does not even distinguish a
+        # metadata-only touch (which a read can cause) from a real write at the *event type*
+        # level — both surface as "modified". So a file's content is also compared against what
+        # it was when last seen: a matching modification time means nothing actually changed.
+        # Pre-existing files are seeded here so their first *real* edit is still detected (not
+        # mistaken for "no baseline yet, so anything counts").
+        last_mtime: dict[Path, int] = {}
+        for directory in directories:
+            for candidate in directory.rglob("*"):
+                if candidate.is_file() and accept(candidate):
+                    mtime = _mtime(candidate)
+                    if mtime is not None:
+                        last_mtime[candidate] = mtime
+
         class Handler(FileSystemEventHandler):
             # watchdog calls this from its own thread, so the queue is only touched through
             # ``call_soon_threadsafe``: the event loop is the sole owner of the queue.
@@ -71,8 +93,23 @@ class WatchdogChangeSource:
                 for raw in (event.src_path, event.dest_path):
                     if raw:
                         path = Path(os.fsdecode(raw))
-                        if accept(path):
-                            loop.call_soon_threadsafe(queue.put_nowait, path)
+                        if not accept(path):
+                            continue
+                        mtime = _mtime(path)
+                        # The modification-time check is scoped to "modified" events only: a
+                        # create or a rename is trusted as reported. Broadening it to those too
+                        # once regressed a real case — a rename can, depending on the OS, land
+                        # with a modification time that coincides with what was last recorded
+                        # for the destination path, which isn't a false positive to filter out.
+                        if (
+                            event.event_type == EVENT_TYPE_MODIFIED
+                            and mtime is not None
+                            and last_mtime.get(path) == mtime
+                        ):
+                            continue  # same modification time as last seen: not a real edit
+                        if mtime is not None:
+                            last_mtime[path] = mtime
+                        loop.call_soon_threadsafe(queue.put_nowait, path)
 
         observer = Observer()
         for directory in directories:

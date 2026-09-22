@@ -107,4 +107,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   WebEngine-specific failure there, unlike the headless core, whose test suite already exercises an
   accented workspace path (`Quant - María`) that is exactly the kind of thing macOS's Unicode filename
   normalization (NFD, unlike Windows/Linux) could disagree with.
+- The first macOS run immediately found a real one: `qw watch` false-positives again there, but for a
+  different reason than the Linux one above. macOS's FSEvents backend does not distinguish a
+  metadata-only touch (which a read can cause) from a real write at the *event-type* level — both
+  surface as "modified" — so filtering by event type alone, which was enough for Linux, is not enough
+  here. `WatchdogChangeSource` now also compares a file's modification time against what it was last
+  seen as, but only for "modified" events specifically: applying that same check to renames too
+  regressed a real case (a save-via-temp-file-and-rename can legitimately land with a modification time
+  that coincides with what was last recorded for the destination path).
 
