@@ -50,7 +50,17 @@ _LEAKY_VARIABLES = frozenset(
 # Windows reads them in the ANSI code page. In a workspace called "Quant - María" the path
 # of the project's CA bundle then no longer resolves, and every TLS request made through
 # curl_cffi (yfinance) fails with "Cookie/crumb fetch failed (SSLError)". See ADR 0004.
-_FORCED_VARIABLES = {"PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}
+#
+# PYTHONDONTWRITEBYTECODE keeps a run from creating a fresh `__pycache__/` inside the
+# project's own `src/`. Besides the clutter, creating that directory *for the first time*
+# is itself a filesystem change under a folder `qw watch` recursively watches; on Linux this
+# was observed to make the watcher (mis)report every sibling source file as changed on the
+# very next batch, not just the one actually edited.
+_FORCED_VARIABLES = {
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONDONTWRITEBYTECODE": "1",
+}
 
 
 def build_environment(

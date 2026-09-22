@@ -276,6 +276,13 @@ def test_a_commit_is_authored_with_the_required_identity_and_never_pushed(
         ["git", "-C", str(repo), "config", "--local", "user.email", "mariatg.invers@gmail.com"],
         check=True,
     )
+    # The identity policy only requires the e-mail (see Settings.expected_git_name), but an
+    # actual `git commit` still needs *some* user.name; the fake global config in `repo` deliberately
+    # has none, so without this, committing falls back to git's platform-dependent auto-detection.
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "--local", "user.name", "María Tejedor García"],
+        check=True,
+    )
     wait_git(qtbot, opened)
     git = opened.views.git
     assert "identity ok" in git.header.text()

@@ -69,4 +69,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `ui/highlight.py`: an installed `types-pygments` stub mistypes `_TokenType.__contains__` as taking a
   `str`; the local venv this was developed in predated that dependency being added and never had it
   installed, so mypy never saw the mismatch until CI's from-scratch install picked it up.
+- A project run now sets `PYTHONDONTWRITEBYTECODE=1`, so it never creates a `src/__pycache__/`. Besides
+  the clutter, on Linux the *first* run of a freshly scaffolded project was observed to make `qw watch`
+  misreport every sibling source file as changed on the following batch — creating that subdirectory for
+  the first time inside a recursively-watched folder confused the watcher, not the file actually edited.
+- `test_git_cli.py`: a written pre-commit hook now gets its executable bit set; POSIX git silently
+  ignores a non-executable hook (a no-op on Windows, which is why this only failed on Linux).
+- `test_views_other.py`: the guarded-commit GUI test now configures both `user.name` and `user.email`
+  for the test repository. Only the e-mail is required by policy, but an actual `git commit` still needs
+  *some* name; leaving it to git's own auto-detection turned out to behave differently enough between
+  Windows and Linux that the commit — and the whole test process, via a later WebEngine teardown — hung
+  on Linux CI.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 import subprocess
 from pathlib import Path
 
@@ -236,6 +237,8 @@ def test_the_hooks_of_the_repository_are_respected(repo: Path) -> None:
     """The workbench never passes --no-verify: a failing pre-commit hook blocks the commit."""
     hook = repo / ".git" / "hooks" / "pre-commit"
     hook.write_text("#!/bin/sh\necho blocked by hook >&2\nexit 1\n", encoding="utf-8", newline="\n")
+    # On POSIX, git silently ignores a hook that is not executable (a no-op on Windows).
+    hook.chmod(hook.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     (repo / "notes.txt").write_text("x\n", encoding="utf-8")
     git(repo, "config", "--local", "user.email", "maria@example.org")
     git(repo, "config", "--local", "user.name", "María")
