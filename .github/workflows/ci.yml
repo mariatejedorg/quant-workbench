@@ -48,12 +48,16 @@ jobs:
 
   gui:
     # The desktop application, rendered off-screen.
-    name: gui (offscreen)
-    runs-on: ubuntu-latest
+    name: gui (offscreen, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     env:
       QT_QPA_PLATFORM: offscreen
-      # --disable-dev-shm-usage: hosted runners cap /dev/shm well below what Chromium wants by
-      # default, which is a well-known cause of renderer crashes in CI containers.
+      # --disable-dev-shm-usage: hosted Linux runners cap /dev/shm well below what Chromium wants
+      # by default, a well-known cause of renderer crashes in CI containers; harmless elsewhere.
       QTWEBENGINE_CHROMIUM_FLAGS: "--no-sandbox --disable-gpu --disable-dev-shm-usage"
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +66,10 @@ jobs:
           python-version: "3.13"
           cache: pip
       - name: System libraries required by Qt
+        # Only Linux needs this: PySide6's macOS wheels bundle their own Qt/Chromium frameworks,
+        # the way its Windows wheels bundle DLLs, but its Linux wheels link against system
+        # libraries that are expected to already be on the machine (X11/EGL and friends).
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libdbus-1-3 libnss3 libxcomposite1 \

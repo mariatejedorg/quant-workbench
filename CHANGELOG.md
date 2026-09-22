@@ -124,4 +124,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   recorded time to match, so this does not affect real creations. "moved" stays excluded: covering it
   as well reproduced the Windows rename regression from two entries above, intermittently (about 1 run
   in 10 locally), confirming that exclusion was necessary and not a fluke.
+- `core` is now green on macOS too (confirmed on CI immediately after the fix above), so `gui` now also
+  runs on macOS, not just Linux — the whole suite is offscreen already, and PySide6's macOS wheels
+  bundle their own Qt/Chromium frameworks the way the Windows ones bundle DLLs, so no extra system
+  packages are needed there the way Ubuntu needs (only Ubuntu now runs the `apt-get` step).
 
