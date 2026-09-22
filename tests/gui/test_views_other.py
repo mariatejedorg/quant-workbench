@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from PIL import Image
 from PySide6.QtWidgets import QApplication
 
 from quant_workbench.domain.runs import RunStatus
@@ -163,6 +164,19 @@ def test_a_project_without_a_readme_says_so(opened: MainWindow, workspace: Path)
     opened.views.show("readme")
 
     assert "no README.md" in opened.views.readme.browser.toPlainText()
+
+
+def test_an_oversized_preview_image_is_capped_so_it_fits_the_panel(
+    opened: MainWindow, workspace: Path
+) -> None:
+    Image.new("RGB", (1600, 900)).save(workspace / "alpha" / "preview.png")
+    (workspace / "alpha" / "README.md").write_text(
+        "# Alpha\n\n![preview](preview.png)\n", encoding="utf-8"
+    )
+    opened.select_project("alpha")
+    opened.views.show("readme")
+
+    assert 'width="720"' in opened.views.readme.browser.document().toHtml()
 
 
 # ------------------------------------------------------------------------- graph

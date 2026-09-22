@@ -143,4 +143,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   green on the first run, no macOS-specific surprises this time. CI is fully green across all twelve
   combinations: `core` on Linux, Windows and macOS × Python 3.11–3.13, `gui` offscreen on Linux and
   macOS, and `build`.
+- The README viewer's badges (Python/pandas/Plotly/yfinance, every project README opens with them)
+  always rendered as broken-image boxes: `QTextBrowser.loadResource` only ever resolves *local*
+  resources via `setSearchPaths` — it never fetches `http(s)://` URLs. `ReadmeView` now uses a
+  `QTextBrowser` subclass that fetches remote images with `QNetworkAccessManager` and re-renders once
+  they arrive (cached in the document's own resource store, so a re-render never re-fetches).
+- A project's dashboard-preview screenshots in its README also rendered wrong: Qt's rich text engine
+  draws every `<img>` at its native pixel size, unlike a real browser, which doesn't shrink oversized
+  images to fit. A 1500px+ screenshot blew out the panel entirely, its own baked-in chart title text
+  reading as huge, cut-off characters. `ui/markdown.py` now caps local images wider than 720px with an
+  explicit `width` attribute (Qt scales the height to match); remote images — always icon-sized badges
+  — and images that fail to open are left untouched.
 

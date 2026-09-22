@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from PIL import Image
 from pygments.token import Token
 
 from quant_workbench.application.config import ProjectConstant
@@ -24,7 +25,7 @@ from quant_workbench.ui.highlight import (
     syntax_colours,
 )
 from quant_workbench.ui.history_html import comparison_html
-from quant_workbench.ui.markdown import render_markdown, stylesheet
+from quant_workbench.ui.markdown import constrain_local_image_widths, render_markdown, stylesheet
 from quant_workbench.ui.plotly_cache import PlotlyCache, download, find_cdn_scripts
 from quant_workbench.ui.theme import DARK, LIGHT, contrast_ratio
 
@@ -336,6 +337,27 @@ def test_markdown_renders_tables_and_refuses_raw_html() -> None:
 def test_the_readme_stylesheet_follows_the_theme() -> None:
     assert DARK.accent in stylesheet(DARK)
     assert LIGHT.window in stylesheet(LIGHT)
+
+
+def test_an_oversized_local_preview_image_is_capped_to_fit_the_panel(tmp_path: Path) -> None:
+    Image.new("RGB", (1600, 900)).save(tmp_path / "wide.png")
+    Image.new("RGB", (200, 120)).save(tmp_path / "narrow.png")
+    html = render_markdown("![wide](wide.png)\n\n![narrow](narrow.png)\n")
+
+    capped = constrain_local_image_widths(html, tmp_path)
+
+    assert '<img src="wide.png" alt="wide" width="720" />' in capped
+    assert '<img src="narrow.png" alt="narrow" />' in capped  # already small enough: left alone
+
+
+def test_a_missing_or_remote_preview_image_is_left_untouched(tmp_path: Path) -> None:
+    html = render_markdown(
+        "![badge](https://img.shields.io/badge/Python-blue)\n\n![gone](nope.png)\n"
+    )
+
+    capped = constrain_local_image_widths(html, tmp_path)
+
+    assert "width=" not in capped
 
 
 # --------------------------------------------------------------------- plotly cache
