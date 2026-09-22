@@ -154,4 +154,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   reading as huge, cut-off characters. `ui/markdown.py` now caps local images wider than 720px with an
   explicit `width` attribute (Qt scales the height to match); remote images — always icon-sized badges
   — and images that fail to open are left untouched.
+- The badge fix above froze the app the instant the README tab opened: to check whether a badge had
+  already been fetched, `loadResource` asked the document for it with `document().resource(...)`, but
+  that call itself falls back to calling `loadResource` again for anything not yet cached — infinite
+  recursion, immediately, for every remote image (every project README opens with four). It now keeps
+  its own plain `dict` cache instead, which never calls back into Qt. A regression test lowers the
+  recursion limit to just above its own call depth and asserts a fresh, uncached URL still returns
+  promptly — it reliably reproduces the freeze (as a clean `RecursionError`, not a hang) against the
+  broken version, without needing hundreds of real frames or a live network reply to prove the point.
 

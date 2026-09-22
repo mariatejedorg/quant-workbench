@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import inspect
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from PIL import Image
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QApplication
 
 from quant_workbench.domain.runs import RunStatus
@@ -164,6 +168,29 @@ def test_a_project_without_a_readme_says_so(opened: MainWindow, workspace: Path)
     opened.views.show("readme")
 
     assert "no README.md" in opened.views.readme.browser.toPlainText()
+
+
+def test_loading_a_remote_readme_image_does_not_recurse(opened: MainWindow) -> None:
+    """Regression: ``loadResource`` used to check the cache by calling ``document().resource()``,
+    which itself falls back to calling ``loadResource`` again for anything not cached yet —
+    infinite recursion for *any* remote image, which crashed the app the instant a README with a
+    badge (every project's README opens with four) was opened. The recursion limit is lowered to
+    just above the test's own call depth so a reintroduced bug trips almost instantly here, rather
+    than needing hundreds of frames (or a real network reply) to prove the point.
+    """
+    browser = opened.views.readme.browser
+    depth = len(inspect.stack())
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(depth + 30)
+    try:
+        result = browser.loadResource(
+            QTextDocument.ResourceType.ImageResource.value,
+            QUrl("https://img.shields.io/badge/x-y-blue"),
+        )
+    finally:
+        sys.setrecursionlimit(old_limit)
+
+    assert result is not None  # None makes Qt call this again on every relayout, forever
 
 
 def test_an_oversized_preview_image_is_capped_so_it_fits_the_panel(

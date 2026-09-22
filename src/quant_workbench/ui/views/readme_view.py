@@ -12,6 +12,13 @@ from quant_workbench.ui.markdown import constrain_local_image_widths, render_mar
 from quant_workbench.ui.theme import Tokens
 from quant_workbench.ui.views.base import ProjectView
 
+#: Returned for a remote image while its real fetch is still in flight. ``QTextDocument`` needs
+#: *some* valid image to size the layout around; returning ``None`` instead makes it treat the
+#: resource as still unresolved and call ``loadResource`` again on every relayout — in practice
+#: a busy loop that pegs a CPU core and never lets the fetch's own event-loop turn run.
+_PENDING_IMAGE = QImage(1, 1, QImage.Format.Format_ARGB32)
+_PENDING_IMAGE.fill(0)  # transparent: invisible placeholder, not a visible glitch
+
 
 class _ReadmeBrowser(QTextBrowser):
     """A ``QTextBrowser`` that also fetches the README's remote images.
@@ -19,14 +26,16 @@ class _ReadmeBrowser(QTextBrowser):
     ``QTextBrowser.loadResource`` only ever resolves *local* resources, via ``setSearchPaths`` —
     it never fetches ``http(s)://`` URLs, so the shields.io badges every project README opens
     with always rendered as broken-image boxes. This fetches them in the background and re-renders
-    once they arrive; ``document().resource()`` is checked first so an already-fetched badge is
-    reused instead of being downloaded again on every re-render.
+    once they arrive, keeping its own cache of already-fetched badges rather than asking the
+    document for one: ``document().resource()`` resolves a miss by calling back into this very
+    method, which recurses forever for a URL nothing has cached yet.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._network = QNetworkAccessManager(self)
         self._pending: set[str] = set()
+        self._cache: dict[str, QImage] = {}
         self._html = ""
 
     def setHtml(self, html: str) -> None:
@@ -39,15 +48,15 @@ class _ReadmeBrowser(QTextBrowser):
             and isinstance(name, QUrl)
             and name.scheme() in ("http", "https")
         ):
-            cached = self.document().resource(resource_type, name)
+            url = name.toString()
+            cached = self._cache.get(url)
             if cached is not None:
                 return cached
-            url = name.toString()
             if url not in self._pending:
                 self._pending.add(url)
                 reply = self._network.get(QNetworkRequest(name))
                 reply.finished.connect(lambda: self._on_image_fetched(name, reply))
-            return None
+            return _PENDING_IMAGE
         return super().loadResource(resource_type, name)
 
     def _on_image_fetched(self, url: QUrl, reply: QNetworkReply) -> None:
@@ -56,7 +65,7 @@ class _ReadmeBrowser(QTextBrowser):
         reply.deleteLater()
         image = QImage()
         if image.loadFromData(data) and self._html:
-            self.document().addResource(QTextDocument.ResourceType.ImageResource.value, url, image)
+            self._cache[url.toString()] = image
             super().setHtml(self._html)  # re-render now that the badge is cached
 
 
