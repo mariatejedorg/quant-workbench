@@ -91,4 +91,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   torn down in a chaotic order at interpreter exit, which crashes on Linux (invisible on Windows). Each
   test's window is now deleted deterministically, with a short pump of the event loop for the deferred
   deletion — and WebEngine's own asynchronous teardown — to actually run before the next test starts.
+  This reduced the crash's rate but did not eliminate it — see *Known issues* below.
+
+### Known issues
+- **`gui` CI job segfaults on Linux after all 105 tests pass** (`core` — both OS — and `build` are fully
+  green; the desktop app itself is verified on Windows, where the whole suite, this one included, is
+  green). The crash is at process exit ("Release of profile requested but WebEnginePage still not
+  deleted"), inside QtWebEngine/Chromium's own teardown, not in application or test logic — every
+  assertion in every test has already passed by the time it happens. One mitigation (deterministic
+  per-test window deletion, see *Fixed* above) landed and is worth keeping regardless, but did not
+  eliminate the crash. Not pursuing this further for now: Windows is this project's actual target
+  platform, and the two prior rounds of "fix, verify passing on Windows, still fails identically on
+  Linux" show that this Windows machine cannot reliably diagnose a Linux-only QtWebEngine shutdown
+  crash. Follow-up ideas if this is revisited: run the GUI job's `pytest` under a tool that reaps
+  QtWebEngine's child processes before interpreter exit; try Xvfb instead of the `offscreen` platform
+  plugin; or split dashboard-touching tests into their own `pytest` invocation so the crash, if still
+  process-wide, at least does not take down the other 90-odd unrelated GUI tests' results with it.
 

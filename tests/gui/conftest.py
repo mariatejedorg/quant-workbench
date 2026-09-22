@@ -135,5 +135,8 @@ def window(qtbot, controller: AppController, tmp_path: Path) -> Iterator[MainWin
     # ("Release of profile requested but WebEnginePage still not deleted"). Deleting each window
     # deterministically, with its own short pump of the event loop for the deferred deletion (and
     # WebEngine's own asynchronous teardown) to actually run, avoids that pile-up.
+    # NOTE: this reduced the crash's rate on Linux CI but did not eliminate it (still segfaults at
+    # process exit after every test passes; see CHANGELOG.md "Known issues"). Not chased further:
+    # this could not be reproduced or diagnosed on the Windows machine this project is developed on.
     shown.deleteLater()
     qtbot.wait(50)

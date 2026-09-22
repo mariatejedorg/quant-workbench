@@ -48,6 +48,11 @@ jobs:
 
   gui:
     # The desktop application, rendered off-screen.
+    #
+    # KNOWN ISSUE: this job currently segfaults at process exit on Linux, after every test has
+    # already passed (QtWebEngine/Chromium teardown, not application or test logic). See
+    # CHANGELOG.md "Known issues" for what was tried. The application itself is verified on
+    # Windows, where the same suite is green; treat a red `core`/`build` here as the real signal.
     name: gui (offscreen)
     runs-on: ubuntu-latest
     env:
