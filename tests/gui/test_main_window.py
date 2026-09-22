@@ -63,6 +63,29 @@ def test_opening_a_workspace_fills_the_explorer_and_the_overview(opened: MainWin
     assert all(opened.run_status(s) is None for s in ("alpha", "beta", "slow", "broken"))
 
 
+def test_opening_a_workspace_remembers_it_for_the_next_launch(
+    window: MainWindow, workspace: Path, controller: AppController
+) -> None:
+    """A launcher Windows generates on its own (a taskbar pin) does not necessarily carry the
+    working directory a hand-made shortcut sets, so the next launch must not depend on it.
+    """
+    assert window.open_workspace(workspace)
+
+    saved = load_settings(controller.container.paths.settings_file)
+    assert saved.workspace_root == workspace
+
+
+def test_reopening_the_same_workspace_does_not_rewrite_settings(
+    window: MainWindow, workspace: Path, controller: AppController
+) -> None:
+    assert window.open_workspace(workspace)
+    written_at = controller.container.paths.settings_file.stat().st_mtime_ns
+
+    assert window.open_workspace(workspace)
+
+    assert controller.container.paths.settings_file.stat().st_mtime_ns == written_at
+
+
 def test_a_folder_that_is_not_a_workspace_is_reported_not_crashed(
     qtbot, window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

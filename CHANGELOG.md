@@ -162,4 +162,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   recursion limit to just above its own call depth and asserts a fresh, uncached URL still returns
   promptly — it reliably reproduces the freeze (as a clean `RecursionError`, not a hang) against the
   broken version, without needing hundreds of real frames or a live network reply to prove the point.
+- The app has no `settings.toml` until something explicitly writes one, and nothing did: the workspace
+  the window opens with — `container.settings.workspace_root` if set, otherwise whatever
+  `detect_workspace(Path.cwd())` finds — was never saved back, so *every* launch depended on the
+  process's working directory. The Desktop shortcut sets one explicitly, so this was invisible from
+  it, but a taskbar pin Windows generates on its own when pinning a running app does not necessarily
+  carry it, so a launch from a pin can open with no workspace detected at all — indistinguishable from
+  the app failing to start. `MainWindow.open_workspace` now remembers a successfully opened workspace
+  in `settings.toml` (skipped when it is already the saved one, so a normal re-open never rewrites the
+  file), so the next launch reopens the right one regardless of the launcher's working directory.
 

@@ -620,7 +620,22 @@ class MainWindow(QMainWindow):
             self.open_workspace(Path(chosen))
 
     def open_workspace(self, path: Path) -> bool:
-        return self._controller.open_workspace(path)
+        opened = self._controller.open_workspace(path)
+        if opened:
+            self._remember_workspace(path)
+        return opened
+
+    def _remember_workspace(self, path: Path) -> None:
+        """Persist ``path`` as ``workspace_root`` so the *next* launch reopens it directly,
+        without depending on the process's current working directory. Without this, a launcher
+        whose working directory Windows does not control the same way a hand-made shortcut does
+        (e.g. a taskbar pin Explorer generates on its own when pinning a running app) opens with
+        no workspace detected at all, and looks like the app failed to start.
+        """
+        if self._settings_file is None or self._settings.workspace_root == path:
+            return
+        self._settings = self._settings.model_copy(update={"workspace_root": path})
+        save_settings(self._settings, self._settings_file)
 
     def reload_workspace(self) -> None:
         catalog = self._controller.catalog
