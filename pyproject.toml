@@ -42,7 +42,6 @@ gui = [
     "PySide6>=6.7",
     "pygments>=2.18",
     "markdown-it-py>=3.0",
-    "Pillow>=10.3",
 ]
 # Extra needed only to test the desktop UI: `pip install -e ".[dev,gui,gui-test]"`.
 # Kept apart from `dev` because pytest-qt refuses to load without a Qt binding, which

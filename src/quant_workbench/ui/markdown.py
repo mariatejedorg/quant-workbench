@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from markdown_it import MarkdownIt
-from PIL import Image, UnidentifiedImageError
 
 from quant_workbench.ui.theme import Tokens
 
@@ -14,55 +10,64 @@ from quant_workbench.ui.theme import Tokens
 # is shown as text instead of being interpreted.
 _RENDERER = MarkdownIt("commonmark", {"html": False}).enable("table")
 
-# Qt's rich text engine (used by the README's QTextBrowser) draws every <img> at its native
-# pixel size — it does not shrink oversized images to fit, the way a real browser would. A
-# dashboard preview screenshot is easily 1500px+ wide, which blows out the panel entirely. Only
-# local images are capped: remote ones (the README's shields.io badges) are already icon-sized.
-_MAX_LOCAL_IMAGE_WIDTH = 720
-_IMG_TAG = re.compile(r'<img ([^>]*?)src="([^"]+)"([^>]*?)>')
-
 
 def render_markdown(text: str) -> str:
     """The HTML body for ``text`` (CommonMark plus tables, raw HTML disabled)."""
     return _RENDERER.render(text)
 
 
-def constrain_local_image_widths(html: str, project_root: Path) -> str:
-    """Cap local ``<img>`` tags wider than :data:`_MAX_LOCAL_IMAGE_WIDTH` to that width.
-
-    Qt scales the image's height to match automatically as long as only ``width`` is set. Images
-    that are already narrow, or that fail to open (missing file, not actually an image), are left
-    untouched — this only ever makes an oversized image smaller, never bigger or broken.
+def page_html(text: str, tokens: Tokens) -> str:
+    """A standalone page: ``render_markdown(text)`` plus a stylesheet that keeps everything —
+    long lines, wide tables, oversized images — inside the page's own width rather than each
+    element's natural size, the same way the dashboards' own HTML already behaves. Shown in a
+    real embedded browser (see ``ReadmeView``), so this is ordinary responsive CSS: no per-image
+    measuring or capping needed, unlike Qt's rich text engine, which draws every ``<img>`` at its
+    native pixel size and ignores ``max-width`` entirely.
     """
-
-    def _cap(match: re.Match[str]) -> str:
-        before, src, after = match.group(1), match.group(2), match.group(3)
-        if "://" in src:  # remote (badges): never local files, never this large
-            return match.group(0)
-        try:
-            with Image.open(project_root / src) as image:
-                width = image.width
-        except (OSError, UnidentifiedImageError):
-            return match.group(0)
-        if width <= _MAX_LOCAL_IMAGE_WIDTH:
-            return match.group(0)
-        after = after.strip()
-        self_closing = after.endswith("/")
-        after = after[:-1].rstrip() if self_closing else after
-        attrs = f'{" " + after if after else ""} width="{_MAX_LOCAL_IMAGE_WIDTH}"'
-        tail = " />" if self_closing else ">"
-        return f'<img {before}src="{src}"{attrs}{tail}'
-
-    return _IMG_TAG.sub(_cap, html)
-
-
-def stylesheet(tokens: Tokens) -> str:
-    """The default style of a rendered README, from the theme."""
-    return (
-        f"body {{ color: {tokens.ink}; }} "
-        f"a {{ color: {tokens.accent}; }} "
-        f"h1, h2, h3 {{ color: {tokens.ink}; }} "
-        f"code, pre {{ font-family: Consolas, monospace; background: {tokens.window}; }} "
-        f"blockquote {{ color: {tokens.ink_secondary}; }} "
-        f"th {{ background: {tokens.window}; }}"
-    )
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{
+    color: {tokens.ink};
+    background: {tokens.surface};
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    margin: 16px;
+    overflow-wrap: break-word;
+  }}
+  a {{ color: {tokens.accent}; }}
+  h1, h2, h3 {{ color: {tokens.ink}; }}
+  code {{
+    font-family: Consolas, "SF Mono", monospace;
+    background: {tokens.window};
+    padding: 1px 4px;
+    border-radius: 3px;
+  }}
+  pre {{
+    font-family: Consolas, "SF Mono", monospace;
+    background: {tokens.window};
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }}
+  pre code {{ background: none; padding: 0; }}
+  blockquote {{
+    color: {tokens.ink_secondary};
+    margin: 0;
+    padding-left: 12px;
+    border-left: 3px solid {tokens.baseline};
+  }}
+  table {{ border-collapse: collapse; max-width: 100%; }}
+  th, td {{ border: 1px solid {tokens.baseline}; padding: 4px 10px; }}
+  th {{ background: {tokens.window}; }}
+  img {{ max-width: 100%; height: auto; }}
+</style>
+</head>
+<body>
+{render_markdown(text)}
+</body>
+</html>"""

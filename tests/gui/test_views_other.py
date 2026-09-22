@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import inspect
+import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image
-from PySide6.QtCore import QUrl
-from PySide6.QtGui import QTextDocument
+from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication
 
 from quant_workbench.domain.runs import RunStatus
@@ -32,6 +29,14 @@ def opened(qtbot, window: MainWindow, workspace: Path) -> MainWindow:  # type: i
 
 def wait_idle(qtbot, controller: AppController) -> None:  # type: ignore[no-untyped-def]
     qtbot.waitUntil(lambda: not controller.is_busy, timeout=WAIT_MS)
+
+
+def web_text(qtbot, web) -> str:  # type: ignore[no-untyped-def]
+    """The embedded browser's rendered text (``toPlainText`` is asynchronous in QtWebEngine)."""
+    result: list[str] = []
+    web.page().toPlainText(result.append)
+    qtbot.waitUntil(lambda: bool(result), timeout=30_000)
+    return result[0]
 
 
 # --------------------------------------------------------------------- code view
@@ -153,57 +158,83 @@ def test_the_gutter_grows_with_the_number_of_lines(opened: MainWindow) -> None:
 
 
 # ------------------------------------------------------------------------ README
-def test_the_readme_is_rendered_from_markdown(opened: MainWindow) -> None:
-    opened.views.show("readme")
-    browser = opened.views.readme.browser
+def test_the_readme_is_rendered_from_markdown(qtbot, opened: MainWindow) -> None:  # type: ignore[no-untyped-def]
+    readme = opened.views.readme
+    with qtbot.waitSignal(readme.web.loadFinished, timeout=30_000):  # type: ignore[attr-defined]
+        opened.views.show("readme")
 
-    assert "Alpha" in browser.toPlainText()
-    assert "notes" in browser.toPlainText()
-    assert "**" not in browser.toPlainText()  # the markup was interpreted
+    text = web_text(qtbot, readme.web)
+    assert "Alpha" in text
+    assert "notes" in text
+    assert "**" not in text  # the markup was interpreted
 
 
-def test_a_project_without_a_readme_says_so(opened: MainWindow, workspace: Path) -> None:
+def test_a_project_without_a_readme_says_so(qtbot, opened: MainWindow, workspace: Path) -> None:  # type: ignore[no-untyped-def]
     (workspace / "beta" / "README.md").unlink()
-    opened.select_project("beta")
-    opened.views.show("readme")
+    readme = opened.views.readme
+    with qtbot.waitSignal(readme.web.loadFinished, timeout=30_000):  # type: ignore[attr-defined]
+        opened.select_project("beta")
+        opened.views.show("readme")
 
-    assert "no README.md" in opened.views.readme.browser.toPlainText()
-
-
-def test_loading_a_remote_readme_image_does_not_recurse(opened: MainWindow) -> None:
-    """Regression: ``loadResource`` used to check the cache by calling ``document().resource()``,
-    which itself falls back to calling ``loadResource`` again for anything not cached yet —
-    infinite recursion for *any* remote image, which crashed the app the instant a README with a
-    badge (every project's README opens with four) was opened. The recursion limit is lowered to
-    just above the test's own call depth so a reintroduced bug trips almost instantly here, rather
-    than needing hundreds of frames (or a real network reply) to prove the point.
-    """
-    browser = opened.views.readme.browser
-    depth = len(inspect.stack())
-    old_limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(depth + 30)
-    try:
-        result = browser.loadResource(
-            QTextDocument.ResourceType.ImageResource.value,
-            QUrl("https://img.shields.io/badge/x-y-blue"),
-        )
-    finally:
-        sys.setrecursionlimit(old_limit)
-
-    assert result is not None  # None makes Qt call this again on every relayout, forever
+    assert "no README.md" in web_text(qtbot, readme.web)
 
 
-def test_an_oversized_preview_image_is_capped_so_it_fits_the_panel(
-    opened: MainWindow, workspace: Path
+def test_a_remote_readme_badge_loads_without_freezing_the_app(
+    qtbot,  # type: ignore[no-untyped-def]
+    opened: MainWindow,
+    workspace: Path,
 ) -> None:
-    Image.new("RGB", (1600, 900)).save(workspace / "alpha" / "preview.png")
+    """Regression: a custom QTextBrowser subclass used to fetch README badges (shields.io images)
+    itself, and a bug in that code could freeze or crash the app the instant a README opened
+    (every project's opens with four). The embedded browser fetches images the same way it
+    fetches everything else on any page, so there is no bespoke fetching code left to break.
+    """
     (workspace / "alpha" / "README.md").write_text(
-        "# Alpha\n\n![preview](preview.png)\n", encoding="utf-8"
+        "# Alpha\n\n![badge](https://img.shields.io/badge/x-y-blue)\n", encoding="utf-8"
     )
-    opened.select_project("alpha")
-    opened.views.show("readme")
+    readme = opened.views.readme
+    with qtbot.waitSignal(readme.web.loadFinished, timeout=30_000):  # type: ignore[attr-defined]
+        opened.select_project("alpha")
+        opened.views.show("readme")
 
-    assert 'width="720"' in opened.views.readme.browser.document().toHtml()
+    assert "Alpha" in web_text(qtbot, readme.web)
+
+
+def test_a_table_of_oversized_preview_images_still_fits_the_panel(
+    qtbot,  # type: ignore[no-untyped-def]
+    opened: MainWindow,
+    workspace: Path,
+) -> None:
+    """The common README pattern across the portfolio (a multi-column table, each cell a
+    dashboard-preview screenshot) used to blow the panel out completely: Qt's rich text engine
+    draws every ``<img>`` at its native pixel size, several images wide. A real browser's own
+    table and image layout shrinks each cell's image to fit instead, the same as any web page.
+    """
+    for name in ("x.png", "y.png", "z.png"):
+        image = QImage(1600, 900, QImage.Format.Format_RGB32)
+        image.fill(0xFFAA00)
+        image.save(str(workspace / "alpha" / name))
+    (workspace / "alpha" / "README.md").write_text(
+        "# Alpha\n\n| a | b | c |\n|---|---|---|\n| ![x](x.png) | ![y](y.png) | ![z](z.png) |\n",
+        encoding="utf-8",
+    )
+    readme = opened.views.readme
+    with qtbot.waitSignal(readme.web.loadFinished, timeout=30_000):  # type: ignore[attr-defined]
+        opened.select_project("alpha")
+        opened.views.show("readme")
+
+    # QtWebEngine's result callback loses a plain JS array in the QVariant conversion (it comes
+    # back as an empty string); JSON round-tripping it through a string sidesteps that entirely.
+    raw: list[str] = []
+    readme.web.page().runJavaScript(  # type: ignore[attr-defined]
+        "JSON.stringify(Array.from(document.querySelectorAll('img'))"
+        ".map(img => img.getBoundingClientRect().width))",
+        raw.append,
+    )
+    qtbot.waitUntil(lambda: bool(raw), timeout=30_000)
+    widths = json.loads(raw[0])
+    assert len(widths) == 3
+    assert all(0 < w < 1600 for w in widths)  # shrunk to fit their column, not their native size
 
 
 # ------------------------------------------------------------------------- graph

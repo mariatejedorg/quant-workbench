@@ -171,4 +171,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   the app failing to start. `MainWindow.open_workspace` now remembers a successfully opened workspace
   in `settings.toml` (skipped when it is already the saved one, so a normal re-open never rewrites the
   file), so the next launch reopens the right one regardless of the launcher's working directory.
+- The README viewer moved from Qt's rich text engine (`QTextBrowser`) to the same embedded browser
+  the dashboard already uses (`QWebEngineView`). That engine draws every element at its natural size
+  regardless of the panel's own width — a `<table>` of three preview-screenshot cells, the common
+  pattern across the portfolio's own READMEs, rendered at three times their native pixel width side
+  by side, however narrow the panel actually was, which is what the two `constrain_local_image_widths`
+  /`_ReadmeBrowser` fixes above were really working around. A real browser engine reflows a page —
+  tables, images, long lines — to fit the space it is given, the same as any web page, so none of that
+  per-image measuring or the bespoke remote-image fetching (and its recursion bug) is needed at all:
+  `ui/markdown.py` now renders a plain HTML document with ordinary CSS (`img { max-width: 100% }`,
+  `pre { white-space: pre-wrap }`), and the browser does the rest. Verified with a real 1600px-wide
+  image in a three-column table: it renders at ~260px, not 1600px. Pillow, added only for the pixel
+  measuring this replaces, is no longer a dependency.
 

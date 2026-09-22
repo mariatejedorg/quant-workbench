@@ -1,72 +1,45 @@
-"""README viewer: the project's README.md rendered from Markdown."""
+"""README viewer: the project's README.md rendered from Markdown.
+
+Shown in the same embedded browser as the dashboard, not Qt's rich text engine — that engine
+draws every element (images especially) at its natural size regardless of the panel's own
+width, and never fetches a remote image at all, so a README's badges and any oversized preview
+screenshot always rendered wrong. A real browser engine reflows content to fit, and fetches
+remote images itself, the same as any other page.
+"""
 
 from __future__ import annotations
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QImage, QTextDocument
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
-from PySide6.QtWidgets import QTextBrowser, QVBoxLayout, QWidget
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from quant_workbench.ui.controller import AppController
-from quant_workbench.ui.markdown import constrain_local_image_widths, render_markdown, stylesheet
+from quant_workbench.ui.markdown import page_html
 from quant_workbench.ui.theme import Tokens
 from quant_workbench.ui.views.base import ProjectView
 
-#: Returned for a remote image while its real fetch is still in flight. ``QTextDocument`` needs
-#: *some* valid image to size the layout around; returning ``None`` instead makes it treat the
-#: resource as still unresolved and call ``loadResource`` again on every relayout — in practice
-#: a busy loop that pegs a CPU core and never lets the fetch's own event-loop turn run.
-_PENDING_IMAGE = QImage(1, 1, QImage.Format.Format_ARGB32)
-_PENDING_IMAGE.fill(0)  # transparent: invisible placeholder, not a visible glitch
+try:  # QtWebEngine ships in PySide6-Addons; the app must still start without it
+    from PySide6.QtWebEngineCore import QWebEnginePage
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+
+    HAS_WEB_ENGINE = True
+except ImportError:  # pragma: no cover - depends on the installation
+    HAS_WEB_ENGINE = False
 
 
-class _ReadmeBrowser(QTextBrowser):
-    """A ``QTextBrowser`` that also fetches the README's remote images.
+if HAS_WEB_ENGINE:
 
-    ``QTextBrowser.loadResource`` only ever resolves *local* resources, via ``setSearchPaths`` —
-    it never fetches ``http(s)://`` URLs, so the shields.io badges every project README opens
-    with always rendered as broken-image boxes. This fetches them in the background and re-renders
-    once they arrive, keeping its own cache of already-fetched badges rather than asking the
-    document for one: ``document().resource()`` resolves a miss by calling back into this very
-    method, which recurses forever for a URL nothing has cached yet.
-    """
+    class _ReadmePage(QWebEnginePage):
+        """Opens a clicked link in the system's own browser instead of navigating the README
+        panel away from the README it exists to show."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._network = QNetworkAccessManager(self)
-        self._pending: set[str] = set()
-        self._cache: dict[str, QImage] = {}
-        self._html = ""
-
-    def setHtml(self, html: str) -> None:
-        self._html = html
-        super().setHtml(html)
-
-    def loadResource(self, resource_type: int, name: QUrl | str) -> object:
-        if (
-            resource_type == QTextDocument.ResourceType.ImageResource.value
-            and isinstance(name, QUrl)
-            and name.scheme() in ("http", "https")
-        ):
-            url = name.toString()
-            cached = self._cache.get(url)
-            if cached is not None:
-                return cached
-            if url not in self._pending:
-                self._pending.add(url)
-                reply = self._network.get(QNetworkRequest(name))
-                reply.finished.connect(lambda: self._on_image_fetched(name, reply))
-            return _PENDING_IMAGE
-        return super().loadResource(resource_type, name)
-
-    def _on_image_fetched(self, url: QUrl, reply: QNetworkReply) -> None:
-        self._pending.discard(url.toString())
-        data = reply.readAll()
-        reply.deleteLater()
-        image = QImage()
-        if image.loadFromData(data) and self._html:
-            self._cache[url.toString()] = image
-            super().setHtml(self._html)  # re-render now that the badge is cached
+        def acceptNavigationRequest(
+            self, url: QUrl | str, type: QWebEnginePage.NavigationType, isMainFrame: bool
+        ) -> bool:
+            if type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked:
+                QDesktopServices.openUrl(QUrl(url))
+                return False
+            return super().acceptNavigationRequest(url, type, isMainFrame)
 
 
 class ReadmeView(ProjectView):
@@ -75,21 +48,29 @@ class ReadmeView(ProjectView):
     ) -> None:
         super().__init__(tokens, parent)
         self._controller = controller
-        self.browser = _ReadmeBrowser()
-        self.browser.setOpenExternalLinks(True)
+        self.web: QWidget
+        if HAS_WEB_ENGINE:
+            self.web = QWebEngineView()
+            self.web.setPage(_ReadmePage(self.web))
+        else:  # pragma: no cover - only without PySide6-Addons
+            self.web = QLabel("The embedded browser (QtWebEngine) is not installed.")
         layout = QVBoxLayout(self)
-        layout.addWidget(self.browser)
+        layout.addWidget(self.web)
         self.refresh()
 
     def refresh(self) -> None:
-        self.browser.document().setDefaultStyleSheet(stylesheet(self._tokens))
         if self._project is None:
-            self.browser.setHtml("<p>Select a project to read its README.</p>")
+            self._load("<p>Select a project to read its README.</p>")
             return
         text = self._controller.read_source(self._project.slug, "README.md")
         if text is None:
-            self.browser.setHtml("<p>This project has no README.md.</p>")
+            self._load("<p>This project has no README.md.</p>")
             return
-        self.browser.setSearchPaths([str(self._project.root)])
-        html = constrain_local_image_widths(render_markdown(text), self._project.root)
-        self.browser.setHtml(html)
+        # A trailing slash: without it, Qt treats the base URL as a *file*, and every
+        # relative image path in the README (e.g. "outputs/preview.png") fails to resolve.
+        base = QUrl.fromLocalFile(str(self._project.root) + "/")
+        self._load(page_html(text, self._tokens), base)
+
+    def _load(self, html: str, base: QUrl | None = None) -> None:
+        if HAS_WEB_ENGINE:
+            self.web.setHtml(html, base or QUrl())  # type: ignore[attr-defined]
