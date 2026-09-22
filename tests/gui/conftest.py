@@ -13,8 +13,11 @@ import pytest
 # Must be set before Qt creates its platform plugin. On Windows the offscreen platform has no
 # fonts of its own, so point it at the system's (otherwise every glyph is drawn as a box).
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-# Chromium (QtWebEngine) inside a headless test process: no sandbox, no GPU
-os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox --disable-gpu")
+# Chromium (QtWebEngine) inside a headless test process: no sandbox, no GPU, and no reliance on
+# /dev/shm (CI containers cap it well below what Chromium wants, a common cause of crashes there).
+os.environ.setdefault(
+    "QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox --disable-gpu --disable-dev-shm-usage"
+)
 if sys.platform == "win32":
     os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
 

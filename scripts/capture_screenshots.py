@@ -17,7 +17,9 @@ from pathlib import Path
 
 # Must be set before Qt creates its platform plugin (same reasons as tests/gui/conftest.py).
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox --disable-gpu")
+os.environ.setdefault(
+    "QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox --disable-gpu --disable-dev-shm-usage"
+)
 if sys.platform == "win32":
     os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
 

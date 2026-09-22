@@ -56,3 +56,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `qw watch <slug>`: re-runs a project whenever a Python file in `src/` or its config folders is saved.
 - ADR 0009 records the rules these three commands follow (only add, never overwrite, ignore generated files).
 
+### Fixed
+- CI: the `core` matrix installs `.[dev]` only, on purpose, to prove the headless engine needs no Qt —
+  but `mypy` was still pointed at the whole package, so it failed there on `ui/`, which needs PySide6's
+  stubs to resolve. `core` now type-checks only the headless packages; `gui` (which does install PySide6)
+  type-checks the full package, `ui/` included.
+- GUI tests on Linux: added `--disable-dev-shm-usage` to the offscreen Chromium flags, a standard
+  mitigation for renderer crashes caused by the small `/dev/shm` of CI containers.
+
