@@ -122,7 +122,7 @@ See [docs/architecture.md](docs/architecture.md) for the run life cycle, batches
   (off-screen Qt, including the embedded browser).
 - **97 % coverage** of the headless core (gate: 85 %), `ruff` and `mypy --strict` clean.
 - Tests never touch the real workspace; the few that read it are read-only and skip when it is absent.
-- CI runs the core without Qt installed, on Linux and Windows, Python 3.11 to 3.13
+- CI runs the core without Qt installed, on Linux, Windows and macOS, Python 3.11 to 3.13
   ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ```bash

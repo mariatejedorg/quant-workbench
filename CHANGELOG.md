@@ -102,4 +102,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   (itself IPC to a renderer process), this fixed the segfault: confirmed green on CI, `gui` included,
   on Linux, immediately after this landed. CI is fully green end to end for the first time: `core` on
   both OS across Python 3.11–3.13, `gui` offscreen on Linux, and `build`.
+- `core` now also runs on macOS (Python 3.11–3.13), ahead of a teammate who uses one starting to run
+  the app. `gui` stays Linux-only for now — nobody on the team currently has a Mac to debug a Qt/
+  WebEngine-specific failure there, unlike the headless core, whose test suite already exercises an
+  accented workspace path (`Quant - María`) that is exactly the kind of thing macOS's Unicode filename
+  normalization (NFD, unlike Windows/Linux) could disagree with.
 
