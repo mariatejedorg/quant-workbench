@@ -63,4 +63,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   type-checks the full package, `ui/` included.
 - GUI tests on Linux: added `--disable-dev-shm-usage` to the offscreen Chromium flags, a standard
   mitigation for renderer crashes caused by the small `/dev/shm` of CI containers.
+- `infrastructure/process.py`: the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP`/`CREATE_NO_WINDOW`
+  flags are looked up with `getattr`, so the module type-checks on Linux too (typeshed's non-Windows
+  stub does not define them at all — this only ever surfaced once CI actually ran mypy on Linux).
+- `ui/highlight.py`: an installed `types-pygments` stub mistypes `_TokenType.__contains__` as taking a
+  `str`; the local venv this was developed in predated that dependency being added and never had it
+  installed, so mypy never saw the mismatch until CI's from-scratch install picked it up.
 

@@ -25,6 +25,13 @@ _STREAM_LIMIT = 16 * 1024 * 1024
 _KILL_GRACE_SECONDS = 3.0
 _DRAIN_SECONDS = 2.0
 
+# ``subprocess.CREATE_NEW_PROCESS_GROUP``/``CREATE_NO_WINDOW`` exist only in typeshed's Windows
+# stub, so mypy reports them as undefined when it checks this file for any other platform (as CI
+# does for Linux). Looked up with getattr, so the module type-checks everywhere; the value is
+# only ever used inside the ``os.name == "nt"`` branch below.
+_CREATE_NEW_PROCESS_GROUP: int = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+_CREATE_NO_WINDOW: int = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 #: Variables that would leak the *workbench's* Python environment into a project's process.
 _LEAKY_VARIABLES = frozenset(
     {
@@ -127,7 +134,7 @@ class AsyncSubprocessRunner:
         timeout_seconds: float | None = None,
     ) -> ProcessOutcome:
         creation: dict[str, object] = (
-            {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
+            {"creationflags": _CREATE_NEW_PROCESS_GROUP | _CREATE_NO_WINDOW}
             if os.name == "nt"
             else {"start_new_session": True}
         )

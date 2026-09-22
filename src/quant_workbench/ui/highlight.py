@@ -34,7 +34,9 @@ _CATEGORIES: tuple[tuple[_TokenType, str], ...] = (
 def category_of(token: _TokenType) -> str | None:
     """The colour category of a Pygments token type, or ``None`` for plain text."""
     for parent, category in _CATEGORIES:
-        if token in parent:
+        # types-pygments types `_TokenType.__contains__` as taking a `str`; at runtime (and in
+        # Pygments' own code) it takes another `_TokenType`, which is what this check needs.
+        if token in parent:  # type: ignore[comparison-overlap]
             return category
     return None
 
