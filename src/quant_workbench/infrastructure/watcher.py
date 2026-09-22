@@ -75,9 +75,13 @@ class WatchdogChangeSource:
         # it was when last seen: a matching modification time means nothing actually changed.
         # Pre-existing files are seeded here so their first *real* edit is still detected (not
         # mistaken for "no baseline yet, so anything counts").
+        # Resolved consistently (macOS routes /tmp and /var through a /private symlink, and
+        # FSEvents reports the resolved form; comparing an unresolved snapshot key against a
+        # resolved event path would silently never match, defeating the modification-time check
+        # below on exactly the platform it exists for).
         last_mtime: dict[Path, int] = {}
         for directory in directories:
-            for candidate in directory.rglob("*"):
+            for candidate in directory.resolve().rglob("*"):
                 if candidate.is_file() and accept(candidate):
                     mtime = _mtime(candidate)
                     if mtime is not None:
@@ -92,7 +96,7 @@ class WatchdogChangeSource:
                 # A rename reports the new name in ``dest_path``: that is the file that now exists.
                 for raw in (event.src_path, event.dest_path):
                     if raw:
-                        path = Path(os.fsdecode(raw))
+                        path = Path(os.fsdecode(raw)).resolve()
                         if not accept(path):
                             continue
                         mtime = _mtime(path)
