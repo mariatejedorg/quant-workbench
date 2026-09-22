@@ -81,6 +81,26 @@ async def test_rejected_paths_are_never_reported(tmp_path: Path) -> None:
     assert batch == {tmp_path / "src" / "code.py"}
 
 
+async def test_merely_reading_a_file_is_not_a_change(tmp_path: Path) -> None:
+    """A project's own process importing its source must never look like an edit.
+
+    On Linux, watchdog's inotify backend also reports a file being opened and closed for a
+    read-only open; Windows' backend has no such notion, so this only matters there, but the
+    filtering itself is platform-independent and worth locking in either way.
+    """
+    (tmp_path / "src").mkdir()
+    read_only = tmp_path / "src" / "read_only.py"
+    read_only.write_text("x = 1\n", encoding="utf-8")
+
+    async with WatchdogChangeSource(QUIET).watching([tmp_path / "src"], only_python) as stream:
+        read_only.read_text(encoding="utf-8")  # a plain read: must never surface as a change
+        real_edit = tmp_path / "src" / "edited.py"
+        real_edit.write_text("y = 2\n", encoding="utf-8")
+        batch = await asyncio.wait_for(stream.next_batch(), PATIENCE_SECONDS)
+
+    assert batch == {real_edit}
+
+
 @pytest.fixture
 def container(tmp_path: Path) -> Iterator[Container]:
     paths = AppPaths.under(tmp_path / "app-home")

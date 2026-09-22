@@ -69,15 +69,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `ui/highlight.py`: an installed `types-pygments` stub mistypes `_TokenType.__contains__` as taking a
   `str`; the local venv this was developed in predated that dependency being added and never had it
   installed, so mypy never saw the mismatch until CI's from-scratch install picked it up.
-- A project run now sets `PYTHONDONTWRITEBYTECODE=1`, so it never creates a `src/__pycache__/`. Besides
-  the clutter, on Linux the *first* run of a freshly scaffolded project was observed to make `qw watch`
-  misreport every sibling source file as changed on the following batch — creating that subdirectory for
-  the first time inside a recursively-watched folder confused the watcher, not the file actually edited.
+- `qw watch` on Linux misreported every sibling source file as changed after a run, not just the file
+  actually edited: watchdog's inotify backend also reports a file merely being *opened for reading*
+  (`FileOpenedEvent`/`FileClosedNoWriteEvent`), which the project's own process triggers just by
+  importing its source. Windows' backend has no such notion, so this was invisible there. The watcher
+  now only reacts to `created`/`modified`/`moved`/`closed` (write) events.
+- A project run now also sets `PYTHONDONTWRITEBYTECODE=1`, so it never creates a `src/__pycache__/` —
+  unrelated to the bug above (kept as an independent hygiene fix: a run should not litter the project's
+  own source folder with bytecode caches it does not need for a script invoked once).
 - `test_git_cli.py`: a written pre-commit hook now gets its executable bit set; POSIX git silently
   ignores a non-executable hook (a no-op on Windows, which is why this only failed on Linux).
 - `test_views_other.py`: the guarded-commit GUI test now configures both `user.name` and `user.email`
   for the test repository. Only the e-mail is required by policy, but an actual `git commit` still needs
   *some* name; leaving it to git's own auto-detection turned out to behave differently enough between
-  Windows and Linux that the commit — and the whole test process, via a later WebEngine teardown — hung
-  on Linux CI.
+  Windows and Linux to hang the commit on Linux CI. Confirmed as its own, separate bug from the one
+  below: with just this fix, all 105 GUI tests passed on Linux, including this one.
+- The GUI test session still crashed on Linux right at process exit, after every test had passed
+  ("Release of profile requested but WebEnginePage still not deleted"). Every window built in a test
+  builds a `DashboardView`, hence a `QWebEngineView`, whether or not that test ever shows it; left to
+  Python's GC and Qt's default parent-child deletion, roughly one hundred of these across the suite were
+  torn down in a chaotic order at interpreter exit, which crashes on Linux (invisible on Windows). Each
+  test's window is now deleted deterministically, with a short pump of the event loop for the deferred
+  deletion — and WebEngine's own asynchronous teardown — to actually run before the next test starts.
 

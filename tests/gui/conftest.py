@@ -129,3 +129,11 @@ def window(qtbot, controller: AppController, tmp_path: Path) -> Iterator[MainWin
     shown.show()
     yield shown
     shown.hide()  # closing would ask about running projects; the controller fixture stops them
+    # Every window builds a DashboardView, hence a QWebEngineView, whether or not a test ever
+    # shows it. Left to Python's GC and Qt's default parent-child deletion, ~100 of these across
+    # the suite are torn down in a chaotic order at interpreter exit, which crashes on Linux
+    # ("Release of profile requested but WebEnginePage still not deleted"). Deleting each window
+    # deterministically, with its own short pump of the event loop for the deferred deletion (and
+    # WebEngine's own asynchronous teardown) to actually run, avoids that pile-up.
+    shown.deleteLater()
+    qtbot.wait(50)

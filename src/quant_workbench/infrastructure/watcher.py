@@ -8,13 +8,28 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
+from watchdog.events import (
+    EVENT_TYPE_CLOSED,
+    EVENT_TYPE_CREATED,
+    EVENT_TYPE_MODIFIED,
+    EVENT_TYPE_MOVED,
+    FileSystemEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 #: Editors save in bursts (write a temporary file, rename it, touch the timestamp...). Waiting
 #: for this much silence turns such a burst into a single batch, hence a single run.
 DEFAULT_QUIET_SECONDS = 0.4
 _JOIN_TIMEOUT_SECONDS = 5
+
+#: watchdog's Linux (inotify) backend also reports files being *opened* and closed after a
+#: read-only open (``FileOpenedEvent``/``FileClosedNoWriteEvent``) — a project's own process
+#: merely importing its source triggers these. Windows' backend has no such notion, so this
+#: distinction is invisible there; only these four event types represent an actual write.
+_RELEVANT_EVENT_TYPES = frozenset(
+    {EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED, EVENT_TYPE_MOVED, EVENT_TYPE_CLOSED}
+)
 
 
 class _Stream:
@@ -50,7 +65,7 @@ class WatchdogChangeSource:
             # watchdog calls this from its own thread, so the queue is only touched through
             # ``call_soon_threadsafe``: the event loop is the sole owner of the queue.
             def on_any_event(self, event: FileSystemEvent) -> None:
-                if event.is_directory:
+                if event.is_directory or event.event_type not in _RELEVANT_EVENT_TYPES:
                     return
                 # A rename reports the new name in ``dest_path``: that is the file that now exists.
                 for raw in (event.src_path, event.dest_path):
