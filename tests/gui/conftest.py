@@ -21,6 +21,9 @@ os.environ.setdefault(
 if sys.platform == "win32":
     os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
 
+from PySide6.QtCore import QTimer
+from PySide6.QtTest import QTest
+
 from quant_workbench.application.settings import Settings
 from quant_workbench.bootstrap import Container, build_container
 from quant_workbench.domain.paths import AppPaths
@@ -134,9 +137,28 @@ def window(qtbot, controller: AppController, tmp_path: Path) -> Iterator[MainWin
     # the suite are torn down in a chaotic order at interpreter exit, which crashes on Linux
     # ("Release of profile requested but WebEnginePage still not deleted"). Deleting each window
     # deterministically, with its own short pump of the event loop for the deferred deletion (and
-    # WebEngine's own asynchronous teardown) to actually run, avoids that pile-up.
-    # NOTE: this reduced the crash's rate on Linux CI but did not eliminate it (still segfaults at
-    # process exit after every test passes; see CHANGELOG.md "Known issues"). Not chased further:
-    # this could not be reproduced or diagnosed on the Windows machine this project is developed on.
+    # WebEngine's own asynchronous teardown) to actually run, avoids that pile-up. On its own this
+    # reduced the crash's rate on Linux CI but did not eliminate it; see
+    # ``_drain_qt_engine_after_session`` below for the rest of the fix.
     shown.deleteLater()
-    qtbot.wait(50)
+    qtbot.wait(150)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _shut_qt_engine_down_properly(qapp) -> Iterator[None]:  # type: ignore[no-untyped-def]
+    """Give Qt (and WebEngine) a real quit sequence, instead of an abrupt interpreter exit.
+
+    pytest-qt's session-wide ``QApplication`` never runs ``exec()``, so Qt's ``aboutToQuit``
+    signal — the hook QtWebEngine's global context uses to shut Chromium's browser process down
+    in an orderly way, pages before their profile — never fires. Without it, that teardown instead
+    happens ad hoc, at whatever point Python's own finalization gets around to deleting the last
+    reference, which is exactly when Linux CI segfaults, right after every test has already passed
+    ("Release of profile requested but WebEnginePage still not deleted"). A zero-delay ``exec()``
+    triggers a real quit sequence — ``aboutToQuit`` and all — without actually blocking; the
+    ``qWait`` afterwards then gives whatever that sequence kicked off (WebEngine's page/profile
+    teardown is itself asynchronous IPC to a renderer process) a little more time to finish.
+    """
+    yield
+    QTimer.singleShot(0, qapp.quit)
+    qapp.exec()
+    QTest.qWait(500)
