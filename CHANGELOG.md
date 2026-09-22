@@ -55,6 +55,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   existing folder; `--setup` builds the environments, `--dry-run` only shows the plan.
 - `qw watch <slug>`: re-runs a project whenever a Python file in `src/` or its config folders is saved.
 - ADR 0009 records the rules these three commands follow (only add, never overwrite, ignore generated files).
+- A real app icon (`data/icon.png`, plus a multi-resolution `data/icon.ico` for Windows), shown on the
+  window's title bar, the taskbar and the Desktop shortcut. The window title now credits its author:
+  "Quant Workbench - María Tejedor García". `bootstrap.icon_path()` resolves the packaged file so `ui`
+  never has to import `infrastructure` directly, matching the layering rule the rest of the app follows.
 
 ### Fixed
 - CI: the `core` matrix installs `.[dev]` only, on purpose, to prove the headless engine needs no Qt —

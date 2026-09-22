@@ -42,6 +42,14 @@ def row_of(window: MainWindow, slug: str) -> int:
     raise AssertionError(slug)
 
 
+# ------------------------------------------------------------------------ branding
+def test_the_window_is_named_and_iconed(window: MainWindow) -> None:
+    assert window.windowTitle() == "Quant Workbench - María Tejedor García"
+    icon = window.windowIcon()
+    assert not icon.isNull()
+    assert icon.availableSizes()  # a real image was loaded, not an empty placeholder
+
+
 # ------------------------------------------------------------------------ opening
 def test_opening_a_workspace_fills_the_explorer_and_the_overview(opened: MainWindow) -> None:
     titles = [

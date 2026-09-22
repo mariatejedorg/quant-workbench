@@ -232,3 +232,12 @@ def build_container(
         database=database if database is not None else resolved_paths.database_file,
         signatures_dir=signatures_dir,
     )
+
+
+def icon_path() -> Path:
+    """The workbench's own icon (window title bar, taskbar, desktop shortcut).
+
+    A plain wrapper around :func:`data_path` so ``ui`` never imports ``infrastructure``
+    directly — the same reason ``build_container`` resolves every other packaged resource.
+    """
+    return data_path("icon.png")

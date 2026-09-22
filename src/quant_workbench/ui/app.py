@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication
 from quant_workbench import __version__
 from quant_workbench.bootstrap import Container, build_container
 from quant_workbench.ui.controller import AppController
-from quant_workbench.ui.main_window import MainWindow, make_settings_store
+from quant_workbench.ui.main_window import MainWindow, app_icon, make_settings_store
 
 
 def create_app(argv: Sequence[str] = ()) -> QApplication:
@@ -24,6 +24,7 @@ def create_app(argv: Sequence[str] = ()) -> QApplication:
     app.setApplicationName("Quant Workbench")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("QuantWorkbench")
+    app.setWindowIcon(app_icon())
     return app
 
 

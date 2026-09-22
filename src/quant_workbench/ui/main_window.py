@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QModelIndex, QSettings, QSortFilterProxyModel, Qt
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtGui import QAction, QCloseEvent, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 from quant_workbench import __version__
 from quant_workbench.application.fixes import FixPreview
 from quant_workbench.application.settings import Settings, save_settings
+from quant_workbench.bootstrap import icon_path
 from quant_workbench.domain.diagnostics import DoctorReport, Finding
 from quant_workbench.domain.run_events import (
     BatchProgress,
@@ -77,6 +78,11 @@ def make_settings_store(path: Path | None = None) -> QSettings:
     return QSettings(_ORGANISATION, _APPLICATION)
 
 
+def app_icon() -> QIcon:
+    """The workbench's icon, shared by every top-level window and the taskbar."""
+    return QIcon(str(icon_path()))
+
+
 class MainWindow(QMainWindow):
     """Top-level window of the desktop application."""
 
@@ -89,7 +95,8 @@ class MainWindow(QMainWindow):
         store: QSettings | None = None,
     ) -> None:
         super().__init__()
-        self.setWindowTitle("Quant Workbench")
+        self.setWindowTitle("Quant Workbench - María Tejedor García")
+        self.setWindowIcon(app_icon())
         self.resize(1360, 860)
         self._controller = controller
         self._settings = settings

@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from quant_workbench import __version__
 from quant_workbench.application.settings import Settings
-from quant_workbench.bootstrap import build_container
+from quant_workbench.bootstrap import build_container, icon_path
 from quant_workbench.cli.main import app
 from quant_workbench.domain.paths import AppPaths
 from quant_workbench.infrastructure.paths import ensure_app_dirs
@@ -39,6 +39,14 @@ def test_app_paths_under_a_root_are_hermetic(accented_root: Path) -> None:
     assert all(
         accented_root in p.parents for p in (paths.config_dir, paths.data_dir, paths.log_dir)
     )
+
+
+def test_icon_path_is_a_real_packaged_png() -> None:
+    path = icon_path()
+
+    assert path.is_file()
+    assert path.suffix == ".png"
+    assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")  # the PNG magic number
 
 
 def test_cli_version() -> None:
