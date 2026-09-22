@@ -99,20 +99,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   Chromium's browser process in an orderly way — pages before their shared profile — which never fired
   in a pytest session (`exec()` is never otherwise called). Together with the deterministic per-test
   window deletion above, and a longer settle time afterwards for WebEngine's own asynchronous teardown
-  (itself IPC to a renderer process), this is the second and hopefully final attempt at the Linux-only
-  segfault tracked in *Known issues* below — not yet confirmed on CI as this is written.
-
-### Known issues
-- **`gui` CI job may still segfault on Linux after all 105 tests pass** (`core` — both OS — and `build`
-  are fully green; the desktop app itself is verified on Windows, where the whole suite, this one
-  included, is green). The crash is at process exit ("Release of profile requested but WebEnginePage
-  still not deleted"), inside QtWebEngine/Chromium's own teardown, not in application or test logic —
-  every assertion in every test has already passed by the time it happens. Two mitigations have landed
-  (see *Fixed* above: deterministic per-test window deletion, and a real Qt quit sequence at session
-  end); as of this entry the second has not yet been confirmed against CI. If it still reproduces,
-  further ideas: run the GUI job's `pytest` under a tool that reaps QtWebEngine's child processes
-  before interpreter exit; try Xvfb instead of the `offscreen` platform plugin; or split
-  dashboard-touching tests into their own `pytest` invocation so the crash, if still process-wide, at
-  least does not take down the other 90-odd unrelated GUI tests' results with it. Windows is this
-  project's actual target platform and is unaffected either way.
+  (itself IPC to a renderer process), this fixed the segfault: confirmed green on CI, `gui` included,
+  on Linux, immediately after this landed. CI is fully green end to end for the first time: `core` on
+  both OS across Python 3.11–3.13, `gui` offscreen on Linux, and `build`.
 
