@@ -127,5 +127,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `core` is now green on macOS too (confirmed on CI immediately after the fix above), so `gui` now also
   runs on macOS, not just Linux — the whole suite is offscreen already, and PySide6's macOS wheels
   bundle their own Qt/Chromium frameworks the way the Windows ones bundle DLLs, so no extra system
-  packages are needed there the way Ubuntu needs (only Ubuntu now runs the `apt-get` step).
+  packages are needed there the way Ubuntu needs (only Ubuntu now runs the `apt-get` step). Confirmed
+  green on the first run, no macOS-specific surprises this time. CI is fully green across all twelve
+  combinations: `core` on Linux, Windows and macOS × Python 3.11–3.13, `gui` offscreen on Linux and
+  macOS, and `build`.
 
