@@ -59,6 +59,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   window's title bar, the taskbar and the Desktop shortcut. The window title now credits its author:
   "Quant Workbench - María Tejedor García". `bootstrap.icon_path()` resolves the packaged file so `ui`
   never has to import `infrastructure` directly, matching the layering rule the rest of the app follows.
+- The taskbar still showed the generic "Python script" icon embedded in the gui-script executable
+  pip/hatchling generates, even though the window itself already had the right one: Windows picks the
+  taskbar button's icon by the process's "AppUserModelID", not the window's own icon, and without one
+  set explicitly it falls back to whatever the launching .exe has embedded. `ui/app.py` now sets it
+  (`SetCurrentProcessExplicitAppUserModelID`) before the `QApplication` is created — the standard fix
+  Microsoft documents for exactly this. Windows-only; a no-op everywhere else.
 
 ### Fixed
 - CI: the `core` matrix installs `.[dev]` only, on purpose, to prove the headless engine needs no Qt —
