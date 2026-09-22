@@ -650,7 +650,9 @@ class MainWindow(QMainWindow):
             self,
             "About Quant Workbench",
             f"<b>Quant Workbench {__version__}</b><br>Run, inspect, debug and extend a "
-            "portfolio of quantitative finance projects.",
+            "portfolio of quantitative finance projects."
+            f"<br><br><span style='color:{self._tokens.ink_muted}; font-size:11px;'>"
+            "by María Tejedor García</span>",
         )
 
     # -------------------------------------------------------------------- theme

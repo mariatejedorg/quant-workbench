@@ -65,6 +65,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   set explicitly it falls back to whatever the launching .exe has embedded. `ui/app.py` now sets it
   (`SetCurrentProcessExplicitAppUserModelID`) before the `QApplication` is created — the standard fix
   Microsoft documents for exactly this. Windows-only; a no-op everywhere else.
+- The Help → About dialog now credits its author, styled small and in the theme's muted colour (not
+  plain body text) so it reads as a subtle signature rather than competing with the version line.
 
 ### Fixed
 - CI: the `core` matrix installs `.[dev]` only, on purpose, to prove the headless engine needs no Qt —

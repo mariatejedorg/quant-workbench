@@ -269,6 +269,18 @@ def test_every_command_has_a_menu_action_and_a_unique_shortcut(window: MainWindo
     }
 
 
+def test_about_credits_maria_subtly(window: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+    monkeypatch.setattr(QMessageBox, "about", lambda *args: seen.append(args[2]))
+
+    window.commands.execute("help.about")
+
+    (text,) = seen
+    assert "María Tejedor García" in text
+    # "subtle": styled smaller and in the muted theme colour, not just plain credit text.
+    assert f"color:{window.tokens.ink_muted}" in text
+
+
 def test_the_palette_runs_commands(qtbot, opened: MainWindow, controller: AppController) -> None:
     opened.select_project("alpha")
     opened.show_palette()
