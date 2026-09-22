@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import sys
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -70,16 +69,14 @@ class WatchdogChangeSource:
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue[Path] = asyncio.Queue()
 
-        # macOS's FSEvents backend goes further than Linux: it does not even distinguish a
-        # metadata-only touch (which a read can cause) from a real write at the *event type*
-        # level — both surface as "modified". So a file's content is also compared against what
-        # it was when last seen: a matching modification time means nothing actually changed.
-        # Pre-existing files are seeded here so their first *real* edit is still detected (not
-        # mistaken for "no baseline yet, so anything counts").
-        # Resolved consistently (macOS routes /tmp and /var through a /private symlink, and
-        # FSEvents reports the resolved form; comparing an unresolved snapshot key against a
-        # resolved event path would silently never match, defeating the modification-time check
-        # below on exactly the platform it exists for).
+        # macOS's FSEvents backend goes further than Linux: a metadata-only touch (which a read
+        # can cause) is not distinguishable from a real write at the *event type* level, and it
+        # can replay events for files that existed before watching even started (see below). So
+        # a file's modification time is also compared against what it was when last seen; this
+        # snapshot of what already exists is what makes that possible. Resolved consistently
+        # with the event handler below: macOS routes /tmp and /var through a /private symlink,
+        # and FSEvents reports the resolved form, so comparing an unresolved key against it
+        # would silently never match.
         last_mtime: dict[Path, int] = {}
         for directory in directories:
             for candidate in directory.resolve().rglob("*"):
@@ -101,23 +98,17 @@ class WatchdogChangeSource:
                         if not accept(path):
                             continue
                         mtime = _mtime(path)
-                        # TEMPORARY diagnostics for the macOS-only failure of
-                        # test_merely_reading_a_file_is_not_a_change; removed in the follow-up
-                        # commit once CI shows what is actually happening there.
-                        print(  # noqa: T201 - pragma: no cover - TEMPORARY CI diagnostics
-                            f"QW_WATCH_DEBUG type={event.event_type!r} path={path!r} "
-                            f"mtime={mtime!r} last={last_mtime.get(path)!r} "
-                            f"raw_src={event.src_path!r} raw_dest={event.dest_path!r}",
-                            file=sys.stderr,
-                            flush=True,
-                        )
-                        # The modification-time check is scoped to "modified" events only: a
-                        # create or a rename is trusted as reported. Broadening it to those too
-                        # once regressed a real case — a rename can, depending on the OS, land
-                        # with a modification time that coincides with what was last recorded
-                        # for the destination path, which isn't a false positive to filter out.
+                        # FSEvents (macOS) can replay a "created" event for a file that existed
+                        # before watching even started — its own documented history replay, up
+                        # to ~30s back — so "created" needs the same modification-time check as
+                        # "modified" (a genuinely new path has no prior entry, so it is never
+                        # filtered by this; only a path already known unchanged is). "moved" is
+                        # deliberately excluded: a rename can legitimately land with a
+                        # modification time that coincides with what was last recorded for the
+                        # destination path (observed as an intermittent failure on Windows,
+                        # roughly 1 in 10 runs, once this check covered every event type).
                         if (
-                            event.event_type == EVENT_TYPE_MODIFIED
+                            event.event_type != EVENT_TYPE_MOVED
                             and mtime is not None
                             and last_mtime.get(path) == mtime
                         ):

@@ -115,8 +115,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   seen as, but only for "modified" events specifically: applying that same check to renames too
   regressed a real case (a save-via-temp-file-and-rename can legitimately land with a modification time
   that coincides with what was last recorded for the destination path).
-- That fix still did not hold up on macOS: the recorded modification time was being compared against
-  the wrong dictionary key. macOS routes `/tmp` and `/var` through a `/private` symlink, and FSEvents
-  reports paths already resolved through it; the snapshot taken before watching started did not
-  resolve its own paths, so the two could never match. Both sides are now resolved consistently.
+- That fix still did not hold up on macOS. The path-resolution theory that followed it was also wrong —
+  same failure, byte for byte, after "fixing" it — so the next attempt added temporary diagnostics
+  (a stderr print of every event) instead of a third guess, and CI's own log gave the real answer:
+  FSEvents replays a "created" event for a file that already existed **before watching started**, up
+  to ~30 seconds back, which is documented behaviour of the underlying macOS API. The modification-time
+  check now also covers "created" events, not just "modified" — a genuinely new file has no prior
+  recorded time to match, so this does not affect real creations. "moved" stays excluded: covering it
+  as well reproduced the Windows rename regression from two entries above, intermittently (about 1 run
+  in 10 locally), confirming that exclusion was necessary and not a fluke.
 
