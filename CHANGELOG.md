@@ -183,4 +183,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `pre { white-space: pre-wrap }`), and the browser does the rest. Verified with a real 1600px-wide
   image in a three-column table: it renders at ~260px, not 1600px. Pillow, added only for the pixel
   measuring this replaces, is no longer a dependency.
+- The move to a real browser above still left the README's own badges (Python/pandas/Plotly/yfinance)
+  missing, the same symptom as before the very first badge fix, for a third, different reason: a page
+  built with `setHtml()` is treated as *local* content, and `LocalContentCanAccessRemoteUrls` — off by
+  default — blocks local content from loading anything remote at all. The image tag was there, "complete"
+  according to the DOM, at 0x0: not a broken-image icon, just silently never fetched. `ReadmeView` now
+  opts into that setting explicitly. A test checks the badge's actual rendered pixel size, not just that
+  the page loaded without crashing — the failure mode this time was invisible to every earlier test.
 

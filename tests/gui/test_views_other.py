@@ -179,15 +179,20 @@ def test_a_project_without_a_readme_says_so(qtbot, opened: MainWindow, workspace
     assert "no README.md" in web_text(qtbot, readme.web)
 
 
-def test_a_remote_readme_badge_loads_without_freezing_the_app(
+def test_a_remote_readme_badge_actually_loads(
     qtbot,  # type: ignore[no-untyped-def]
     opened: MainWindow,
     workspace: Path,
 ) -> None:
-    """Regression: a custom QTextBrowser subclass used to fetch README badges (shields.io images)
-    itself, and a bug in that code could freeze or crash the app the instant a README opened
-    (every project's opens with four). The embedded browser fetches images the same way it
-    fetches everything else on any page, so there is no bespoke fetching code left to break.
+    """Regression, in two parts. First, a custom QTextBrowser subclass used to fetch README
+    badges (shields.io images) itself, and a bug in that code could freeze or crash the app the
+    instant a README opened (every project's opens with four) — fixed by switching to this real
+    embedded browser, which fetches images the same way it fetches everything else on any page.
+    Second, that browser treats a page built from ``setHtml()`` as *local* content, and by
+    default local content cannot load remote images at all (or anything else remote) — the
+    badges silently never even attempted to load, "complete" but 0x0. ``ReadmeView`` now opts
+    into ``LocalContentCanAccessRemoteUrls`` explicitly; this checks the image's real rendered
+    size, not just that the page loaded without crashing.
     """
     (workspace / "alpha" / "README.md").write_text(
         "# Alpha\n\n![badge](https://img.shields.io/badge/x-y-blue)\n", encoding="utf-8"
@@ -198,6 +203,16 @@ def test_a_remote_readme_badge_loads_without_freezing_the_app(
         opened.views.show("readme")
 
     assert "Alpha" in web_text(qtbot, readme.web)
+
+    sizes: list[str] = []
+    readme.web.page().runJavaScript(  # type: ignore[attr-defined]
+        "JSON.stringify(Array.from(document.querySelectorAll('img'))"
+        ".map(img => [img.naturalWidth, img.naturalHeight]))",
+        sizes.append,
+    )
+    qtbot.waitUntil(lambda: bool(sizes), timeout=30_000)
+    [[width, height]] = json.loads(sizes[0])
+    assert width > 0 and height > 0  # not the silently-failed "complete but 0x0" state
 
 
 def test_a_table_of_oversized_preview_images_still_fits_the_panel(

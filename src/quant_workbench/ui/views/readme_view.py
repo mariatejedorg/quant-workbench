@@ -19,7 +19,7 @@ from quant_workbench.ui.theme import Tokens
 from quant_workbench.ui.views.base import ProjectView
 
 try:  # QtWebEngine ships in PySide6-Addons; the app must still start without it
-    from PySide6.QtWebEngineCore import QWebEnginePage
+    from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
     from PySide6.QtWebEngineWidgets import QWebEngineView
 
     HAS_WEB_ENGINE = True
@@ -52,6 +52,12 @@ class ReadmeView(ProjectView):
         if HAS_WEB_ENGINE:
             self.web = QWebEngineView()
             self.web.setPage(_ReadmePage(self.web))
+            # A page rendered from setHtml() is treated as local content, which by default
+            # cannot load remote images at all — the README's own badges (shields.io) never
+            # even attempt to fetch, unlike a real website (which is never "local").
+            self.web.settings().setAttribute(
+                QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True
+            )
         else:  # pragma: no cover - only without PySide6-Addons
             self.web = QLabel("The embedded browser (QtWebEngine) is not installed.")
         layout = QVBoxLayout(self)
