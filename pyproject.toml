@@ -128,6 +128,12 @@ known-first-party = ["quant_workbench"]
 # --------------------------------------------------------------------- mypy
 [tool.mypy]
 python_version = "3.11"
+# CI's `gui` job (the only one that type-checks ui/, since it needs the real PySide6
+# stubs) never runs on a windows-latest runner, so without this, mypy assumes it is
+# checking on Linux/macOS and flags the Windows-only branch in ui/app.py as dead code.
+# Fixed to win32 because the ui module is the only place sys.platform is checked, and
+# the Windows branch is the one with real logic worth validating for type-correctness.
+platform = "win32"
 strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
