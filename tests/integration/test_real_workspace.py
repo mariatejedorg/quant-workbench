@@ -1,6 +1,6 @@
 """Acceptance test against the author's real workspace (skipped where it does not exist).
 
-This is the M1 quality gate: static analysis of the ten real projects must rediscover
+This is the M1 quality gate: static analysis of the fifteen real projects must rediscover
 exactly the dependency edges their manifests declare, in both directions.
 """
 
@@ -41,6 +41,10 @@ EXPECTED_EDGES = {
     ("credit-risk-merton-model", "monte-carlo-price-simulator"),
     ("options-pricing-implied-volatility-surface", "monte-carlo-price-simulator"),
     ("garch-volatility-forecasting", "options-pricing-implied-volatility-surface"),
+    ("replicacion-13f", "markowitz-efficient-frontier"),
+    ("replicacion-13f", "momentum-backtest"),
+    ("spread-credito", "credit-risk-merton-model"),
+    ("analizador-etf", "replicacion-13f"),
 }
 
 
@@ -49,10 +53,10 @@ def load() -> object:
     return catalog.load(REAL_WORKSPACE)
 
 
-def test_all_ten_projects_are_discovered_from_the_registry() -> None:
+def test_all_fifteen_projects_are_discovered_from_the_registry() -> None:
     catalog = load()
 
-    assert len(catalog.projects) == 10  # type: ignore[attr-defined]
+    assert len(catalog.projects) == 15  # type: ignore[attr-defined]
     assert catalog.missing == ()  # type: ignore[attr-defined]
 
 
@@ -64,7 +68,7 @@ def test_static_analysis_finds_exactly_the_declared_dependencies() -> None:
     assert set(edges) == EXPECTED_EDGES
     assert all(o == {EdgeOrigin.DECLARED, EdgeOrigin.DETECTED} for o in edges.values())
     assert graph.find_cycle() is None
-    assert len(graph.generations()) == 3
+    assert len(graph.generations()) == 4
 
 
 # ------------------------------------------------------------ M3: the config editor
@@ -131,5 +135,5 @@ async def test_the_doctor_finds_no_errors_in_the_real_portfolio(
     serious = [f for f in report.findings if f.severity is not Severity.INFO]
     assert [f for f in serious if f.severity is Severity.ERROR] == []
     assert {f.code for f in serious} <= {"explainability-low"}, serious
-    assert len(report.scores) == 10
+    assert len(report.scores) == 15
     assert all(0 <= score.score <= 100 for score in report.scores.values())
