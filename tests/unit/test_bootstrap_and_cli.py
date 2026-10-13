@@ -41,12 +41,12 @@ def test_app_paths_under_a_root_are_hermetic(accented_root: Path) -> None:
     )
 
 
-def test_icon_path_is_a_real_packaged_png() -> None:
+def test_icon_path_is_a_real_packaged_ico() -> None:
     path = icon_path()
 
     assert path.is_file()
-    assert path.suffix == ".png"
-    assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")  # the PNG magic number
+    assert path.suffix == ".ico"
+    assert path.read_bytes().startswith(b"\x00\x00\x01\x00")  # the ICO magic number
 
 
 def test_cli_version() -> None:

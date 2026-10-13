@@ -237,7 +237,11 @@ def build_container(
 def icon_path() -> Path:
     """The workbench's own icon (window title bar, taskbar, desktop shortcut).
 
+    ``icon.ico`` (not ``icon.png``) on purpose: it carries several baked-in resolutions
+    (16 up to 256px) instead of one oversized image Qt has to downscale on the fly for
+    every small surface (title bar, Alt-Tab, system tray) that needs a crisp small icon.
+
     A plain wrapper around :func:`data_path` so ``ui`` never imports ``infrastructure``
     directly — the same reason ``build_container`` resolves every other packaged resource.
     """
-    return data_path("icon.png")
+    return data_path("icon.ico")
